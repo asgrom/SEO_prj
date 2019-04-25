@@ -1,4 +1,9 @@
 from .browser import Browser, Options
+from .google_search import Google
+
+GOOGLE = 'https://google.ru'
+MAILRU = 'https://mail.ru'
+YANDEX = 'https://yandex.ru'
 
 visited_links = list()
 
@@ -51,17 +56,21 @@ def set_selectors_for_website_links():
 #       сделать так, чтобы клик на страницу, на которой будем искать элементы ссылок,
 #       происходил до того, как вводится селектор ссылок.
 def main():
-    drv = Browser(options=Options(), url='http://testsite.alex.org')
-
-    drv.find_element_by_css_selector(
-        get_string('CSS-селектор страницы на которой будем искать', required=True)).click()
-    selectors_for_elems = set_selectors_for_website_links()
-    elem_links = drv.get_links_from_website(
-        css_elems=selectors_for_elems['css_elems'],
-        xpath_elems=selectors_for_elems['xpath_elems']
-    )
-
-    print(elem_links)
+    drv = Google(options=Options(), url='http://testsite.alex.org',
+                 search_engine=GOOGLE, phrase='mazafaka', website_url='wiki.prankru.net')
+    links = drv.search_website_link()
+    print(links)
+    links.click()
+    drv.window_count()
+    # drv.find_element_by_css_selector(
+    #     get_string('CSS-селектор страницы на которой будем искать', required=True)).click()
+    # selectors_for_elems = set_selectors_for_website_links()
+    # elem_links = drv.get_links_from_website(
+    #     css_elems=selectors_for_elems['css_elems'],
+    #     xpath_elems=selectors_for_elems['xpath_elems']
+    # )
+    # drv.get_screenshot_as_file('screenshot')
+    # print(elem_links)
     input()
     drv.close()
 

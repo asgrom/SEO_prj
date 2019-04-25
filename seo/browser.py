@@ -7,9 +7,6 @@ from selenium.webdriver.common.keys import Keys
 from tqdm import tqdm
 
 
-# import colorama
-
-
 class Options(ChromeOptions):
     opt = [
         f'user-data-dir={os.path.join(os.environ["HOME"], ".local/share/seo", "chrome/profile")}',
@@ -27,6 +24,11 @@ class Options(ChromeOptions):
 
 
 class Browser(Chrome):
+    timer = None
+    url = None
+    search_engine = None
+    phrase = None
+    website_url = None
 
     # todo:
     #       функцию для просмотра сайта рекламы.
@@ -36,15 +38,22 @@ class Browser(Chrome):
 
     def __init__(self, options=None, **kwargs):
         super().__init__(options=options)
-        self.requests = kwargs
+        self.data_for_request = kwargs
+
+        self.timer = kwargs.get('timer', None)
+        self.search_engine = kwargs.get('search_engine', None)
+        self.phrase = kwargs.get('phrase', None)
+        self.website_url = kwargs.get('website_url', None)
+        self.url = kwargs.get('url', None)
+
         self.visited_pages = list()
         self.implicitly_wait(5)
-        self.get(kwargs['url'])
+        # self.get(self.url)
 
     def page_scrolling(self):
         height = self.execute_script('return document.body.scrollHeight;')
         html = self.find_element_by_tag_name('html')
-        t = 1 / (height / 60 / self.requests['timer'])
+        t = 1 / (height / 60 / self.data_for_request['timer'])
         for _ in tqdm(range(int(height / 60)), desc='Прокрутка страницы', unit='click'):
             html.send_keys(Keys.DOWN)
             sleep(t)
