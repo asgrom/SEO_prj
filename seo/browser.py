@@ -43,7 +43,6 @@ class Browser(Chrome):
 
     def __init__(self, options=None, **kwargs):
         super().__init__(options=options)
-        self.data_for_request = kwargs
 
         self.timer = kwargs.get('timer', None)
         self.search_engine = kwargs.get('search_engine', None)
@@ -54,9 +53,12 @@ class Browser(Chrome):
 
         self.visited_pages = list()
         self.implicitly_wait(5)
-        # self.get(self.url)
 
     def search_website_link(self):
+        """Поиск ссылки на искомый сайт на странице выдачи поиска
+
+        :return: ссылка на искомый сайт
+        """
         self.get(self.search_engine)
 
         search_field = self.find_element_by_xpath(self.xpath_search_field)
@@ -69,6 +71,7 @@ class Browser(Chrome):
         return found_website_link
 
     def page_scrolling(self):
+        """Прокрутка страницы"""
         height = self.execute_script('return document.body.scrollHeight;')
         html = self.find_element_by_tag_name('html')
         t = 1 / (height / 60 / self.data_for_request['timer'])
@@ -77,7 +80,10 @@ class Browser(Chrome):
             sleep(t)
 
     def get_links_from_website(self, css_elems=None, xpath_elems=None):
-        """Поиск элементов для кликов"""
+        """Поиск элементов для кликов на странице сайта
+
+        :return: список элементов, содержащих ссылку
+        """
         elem_links = None
         try:
             if not css_elems:
@@ -92,6 +98,11 @@ class Browser(Chrome):
         return elem_links
 
     def _find_link_in_search_result(self):
+        """
+        Рекурсивный поиск ссылки на искомый сайт на странице выдачи
+
+        :return: ссылку на сайт
+        """
 
         try:
             # поиск всех ссылок на странице выдачи
