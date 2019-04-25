@@ -1,11 +1,11 @@
 import os
+import re
 from time import sleep
 
 from selenium.common.exceptions import WebDriverException
 from selenium.webdriver import Chrome, ChromeOptions
 from selenium.webdriver.common.keys import Keys
 from tqdm import tqdm
-import re
 
 
 class Options(ChromeOptions):

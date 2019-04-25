@@ -1,6 +1,7 @@
 from .browser import Options
-from .google_search import Google
 from .yandex_search import Yandex
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.keys import Keys
 
 GOOGLE = 'https://google.ru'
 MAILRU = 'https://mail.ru'
@@ -53,14 +54,40 @@ def set_selectors_for_website_links():
     )
 
 
+def search_website_and_go(drv):
+    """Поиск сайта и переход на него
+
+    Если ссылка на сайт найдена, переходим на него и делаем вкладку с ним активной.
+    Прежде чем перейти на сайт, выводится сообщение и происходит задерка. Это надо для того,
+    если по условию задания надо посетить другие сайто до найденого.
+    """
+    link = drv.search_website_link()
+    if link is not None:
+        # притормозим просмотр. вдруг по условиям надо просмотреть другие сайты
+        input('ССЫЛКА НА САЙТ НАЙДЕНА\nПРОДОЛЖИТЬ? >>> ')
+        # drv.execute_script(f"arguments[0].scrollIntoView(true);", link)
+
+        # прокрутка страницы на начало
+        # drv.execute_script('scrollTo(0,0);')
+        link.send_keys(Keys.HOME)
+
+        # перейти к искомому элементу
+        ActionChains(drv).move_to_element(link).click(link).perform()
+
+        # сделать новую вкладку активной
+        drv.switch_to.window(drv.window_handles[-1])
+
+    return
+
+
 # todo: page_css_selector
 #       сделать так, чтобы клик на страницу, на которой будем искать элементы ссылок,
 #       происходил до того, как вводится селектор ссылок.
 def main():
     drv = Yandex(options=Options(), url='http://testsite.alex.org',
-                 search_engine=YANDEX, phrase='mazafaka песня', website_url='lamodax.ru')
-    links = drv.search_website_link()
-    print(links.text)
+                 search_engine=YANDEX, phrase='lamoda', website_url='lamoda.ru')
+
+    search_website_and_go(drv)
     # print(links)
     # links.click()
     # drv.window_count()

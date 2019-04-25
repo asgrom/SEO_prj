@@ -1,7 +1,4 @@
 from .browser import Browser
-from selenium.webdriver.common.keys import Keys
-from selenium.common.exceptions import WebDriverException
-import re
 
 
 class Google(Browser):
