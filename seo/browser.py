@@ -5,6 +5,7 @@ from selenium.common.exceptions import WebDriverException
 from selenium.webdriver import Chrome, ChromeOptions
 from selenium.webdriver.common.keys import Keys
 from tqdm import tqdm
+import re
 
 
 class Options(ChromeOptions):
@@ -29,6 +30,10 @@ class Browser(Chrome):
     search_engine = None
     phrase = None
     website_url = None
+    geo_location = None
+    xpath_for_links_on_search_page = None
+    xpath_for_paginator_next = None
+    xpath_search_field = None
 
     # todo:
     #       функцию для просмотра сайта рекламы.
@@ -45,10 +50,23 @@ class Browser(Chrome):
         self.phrase = kwargs.get('phrase', None)
         self.website_url = kwargs.get('website_url', None)
         self.url = kwargs.get('url', None)
+        self.geo_location = kwargs.get('geo_location', None)
 
         self.visited_pages = list()
         self.implicitly_wait(5)
         # self.get(self.url)
+
+    def search_website_link(self):
+        self.get(self.search_engine)
+
+        search_field = self.find_element_by_xpath(self.xpath_search_field)
+        search_field.clear()
+        search_field.send_keys(self.phrase)
+        search_field.send_keys(Keys.ENTER)
+
+        found_website_link = self._find_link_in_search_result()
+
+        return found_website_link
 
     def page_scrolling(self):
         height = self.execute_script('return document.body.scrollHeight;')
@@ -73,9 +91,35 @@ class Browser(Chrome):
             print(e)
         return elem_links
 
+    def _find_link_in_search_result(self):
+
+        try:
+            # поиск всех ссылок на странице выдачи
+            found_links = self.find_elements_by_xpath(
+                self.xpath_for_links_on_search_page)
+        except WebDriverException:
+            print('ОШИБКА ПОИСКА ССЫЛОК В ВЫДАЧЕ')
+            return None
+
+        for link in found_links:
+            if re.search(self.website_url, link.get_attribute('href')):
+                return link
+
+        try:
+            # поиск в пагинаторе кнопки "Следующая"
+            paginator_next = self.find_element_by_xpath(self.xpath_for_paginator_next)
+            paginator_next.click()
+        except WebDriverException:
+            print('ДОСТИГЛИ КОНЦА ПОИСКА')
+            return None
+
+        return self._find_link_in_search_result()
+
     def window_count(self):
         windows = self.window_handles
+        print(self.current_window_handle)
         print(windows)
+        self.switch_to.window(windows[-1])
         sleep(10)
         print(self.window_handles)
         print(self.current_window_handle)
