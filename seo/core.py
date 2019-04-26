@@ -203,10 +203,13 @@ def main():
         ##########################################################################
         if choice == '6':  # начать поиск сайта и просмотр его
             try:
-                if data_for_request['search_engine'] == GOOGLE:
-                    driver = Google(options=Options(), **data_for_request)
-                elif data_for_request['search_engine'] == YANDEX:
-                    driver = Yandex(options=Options(), **data_for_request)
+                if not driver:
+                    if data_for_request['search_engine'] == GOOGLE:
+                        driver = Google(options=Options(), **data_for_request)
+                    elif data_for_request['search_engine'] == YANDEX:
+                        driver = Yandex(options=Options(), **data_for_request)
+                else:
+                    driver.get(GOOGLE)
                 if search_website_and_go(driver=driver, selectors_for_links=selectors_for_links):
                     with open(VISITED_LINKS_FILE, 'w') as f:
                         for i in visited_links:

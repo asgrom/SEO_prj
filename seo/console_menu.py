@@ -56,7 +56,7 @@ def get_integer(msg='', required=None, valid=None):
                 print('Обязательный параметр!')
         elif not line.isdigit():
             print('Ввести только цифры!')
-        elif line not in valid:
+        elif valid and line not in valid:
             print(f'Choise from {valid}')
         else:
             return int(line)
