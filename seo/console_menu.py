@@ -1,5 +1,4 @@
 from colorama import init, Fore, Style, Back
-from seo.core import *
 
 init(autoreset=True)
 
@@ -17,8 +16,36 @@ def main_menu():
     print(Fore.LIGHTGREEN_EX + Back.BLACK + f'{"":<4}{"[Q] ВЫХОД":<76}')
     print(Back.BLACK + f'{"":<80}')
 
+
+def get_string(msg, required=None):
+    """Получение и валидация ввода запрошенной строки"""
+    msg = msg + '\n  >>>  '
+    while True:
+        line = input(msg)
+        if not line:
+            if not required:
+                return ''
+            else:
+                print('Обязательный параметр!')
+        else:
+            return line
+
+
+def get_integer(msg, required=None):
+    """Получение и валидация запрошенной цифровой строки"""
+    msg += '\n  >>>  '
+    while True:
+        line = input(msg)
+        if not line:
+            if not required:
+                return ''
+            else:
+                print('Обязательный параметр!')
+        elif not line.isdigit():
+            print('Ввести только цифры!')
+        else:
+            return int(line)
+
+
 if __name__ == "__main__":
-        while True:
-            get
-        main_menu()
-        
+    pass
