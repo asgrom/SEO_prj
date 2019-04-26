@@ -210,12 +210,14 @@ def main():
                         driver = Yandex(options=Options(), **data_for_request)
                 else:
                     driver.get(GOOGLE)
-                if search_website_and_go(driver=driver, selectors_for_links=selectors_for_links):
-                    with open(VISITED_LINKS_FILE, 'w') as f:
-                        for i in visited_links:
-                            f.write(i + '\n\n')
+                    driver.switch_to.window(driver.window_handles[-1])
+                search_website_and_go(driver=driver, selectors_for_links=selectors_for_links)
             except WebDriverException as e:
                 print(e)
+
+            with open(VISITED_LINKS_FILE, 'w') as f:
+                for i in visited_links:
+                    f.write(i + '\n\n')
         ##########################################################################
         # вывести данные для запроса
         ##########################################################################
@@ -230,12 +232,13 @@ def main():
                 if driver is None:
                     driver = Google(options=Options(), search_engine=GOOGLE)
 
-                if start_links_click(driver=driver, selectors_for_links=selectors_for_links):
-                    with open(VISITED_LINKS_FILE, 'a') as f:
-                        for i in visited_links:
-                            f.write(i + '\n\n')
+                start_links_click(driver=driver, selectors_for_links=selectors_for_links)
             except WebDriverException as e:
                 print(e)
+
+            with open(VISITED_LINKS_FILE, 'a') as f:
+                for i in visited_links:
+                    f.write(i + '\n\n')
 
         ##########################################################################
         # выход из программы
