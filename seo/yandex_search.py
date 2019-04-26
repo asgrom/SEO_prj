@@ -1,5 +1,6 @@
-from .browser import Browser
 from selenium.webdriver.common.keys import Keys
+
+from .browser import Browser
 
 
 class Yandex(Browser):

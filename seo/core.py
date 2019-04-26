@@ -1,15 +1,16 @@
-import time
-import sys
 import os
+import sys
 from pprint import pprint
+from subprocess import Popen
 
-from .browser import Options
-from .yandex_search import Yandex
+from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
-from selenium.common.exceptions import WebDriverException
 
+from .browser import Options
 from .console_menu import main_menu, get_integer, get_string, search_engine_menu
+from .google_search import Google
+from .yandex_search import Yandex
 
 GOOGLE = 'https://google.ru'
 MAILRU = 'https://mail.ru'
@@ -36,7 +37,7 @@ def set_selectors_for_website_links():
     ))
 
 
-def search_website_and_go(driver, **kwargs):
+def search_website_and_go(driver, selectors_for_links):
     """Поиск сайта и переход на него
 
     Если ссылка на сайт найдена, переходим на него и делаем вкладку с ним активной.
@@ -48,9 +49,13 @@ def search_website_and_go(driver, **kwargs):
     """
     status = None
 
+    if driver.geo_location is not None:
+        driver.change_browser_location()
+
     link = driver.search_website_link()
     if link is None:
         return status
+    visited_links.append(f'Ссылка с поисковика:\n{link.get_attribute("href")}')
 
     try:
         # притормозим просмотр. вдруг по условиям надо просмотреть другие сайты
@@ -70,62 +75,60 @@ def search_website_and_go(driver, **kwargs):
     except Exception as e:
         print(e)
         return status
-    status = start_links_click(driver=driver, **kwargs)
+    status = start_links_click(driver=driver, selectors_for_links=selectors_for_links)
     return status
 
 
-def exit_prog(driver, **kwargs):
+def exit_prog(driver):
     if driver is not None:
         driver.quit()
     sys.exit()
 
 
-def set_search_engine(**kwargs):
+def set_search_engine(data_for_request):
     search_engine = {'1': YANDEX, '2': GOOGLE}
     search_engine_menu()
     choice = get_string(required=True, valid=('1', '2'))
-    kwargs['data_for_request']["search_engine"] = search_engine[choice]
+    data_for_request["search_engine"] = search_engine[choice]
 
 
-# todo: page_css_selector
-#       сделать так, чтобы клик на страницу, на которой будем искать элементы ссылок,
-#       происходил до того, как вводится селектор ссылок.
-
-
-def print_data_for_request(**kwargs):
+def print_data_for_request(data_for_request, selectors_for_links):
     print('Данные для запроса:')
-    pprint(kwargs['data_for_request'], indent=4)
+    pprint(data_for_request, indent=4)
+    print('Селекторы для линков:')
+    pprint(selectors_for_links, indent=4)
 
 
-def set_search_phrase(**kwargs):
-    kwargs['data_for_request']['phrase'] = get_string('Поисковая фраза:', required=True)
+def set_search_phrase(data_for_request):
+    data_for_request['phrase'] = get_string('Поисковая фраза:', required=True)
 
 
-def set_website_url(**kwargs):
+def set_website_url(data_for_request):
     """Устанавливает URL веб-сайта
 
     Поддерживает регулярные выражения.
     """
-    kwargs['data_for_request']['website_url'] = get_string('Website URL:', required=True)
+    data_for_request['website_url'] = get_string('Website URL:', required=True)
 
 
-def set_geo_location(**kwargs):
-    kwargs['data_for_request']['geo_location'] = get_string('Местоположение:')
+def set_geo_location(data_for_request):
+    data_for_request['geo_location'] = get_string('Местоположение:')
 
 
-def set_timer(**kwargs):
-    kwargs['data_for_request']['timer'] = get_integer('Timer:', required=True)
+def set_timer(data_for_request):
+    data_for_request['timer'] = get_integer('Timer:', required=True)
 
 
-def print_visited_links(**kwargs):
+def print_visited_links():
     try:
+        Popen(['gvim', VISITED_LINKS_FILE])
         with open(VISITED_LINKS_FILE) as f:
             print(f.read())
     except OSError as e:
         print(e)
 
 
-def start_links_click(**kwargs):
+def start_links_click(driver, selectors_for_links):
     """Начинаем поиск и просмотр ссылок на странице
 
     Активируем последнюю вкладку.
@@ -133,20 +136,28 @@ def start_links_click(**kwargs):
     Селекторы линков добавляем в словарь data_for_request.
     Добавлена возможность переопределить таймер.
     """
-    driver = kwargs['driver']
-    driver.switch_to.window(driver.window_handles[-1])
+    driver = driver
     selectors_links = set_selectors_for_website_links()
-    kwargs['data_for_request'].update(selectors_links)
+    selectors_for_links.update(selectors_links)
     num_links = selectors_links['num_links_to_click']
+
     if selectors_links['timer']:
         driver.timer = selectors_links['timer']
+    elif driver.timer is None:
+        driver.timer = get_integer('Необходимо установить таймер:', required=True)
 
-    visited_links.append(driver.current_url )
+    driver.switch_to.window(driver.window_handles[-1])
 
-    if num_links > len(driver.get_links_from_website(
-            css_elems=selectors_links['css_elems'],
-            xpath_elems=selectors_links['xpath_elems'])):
-        print(f'КОЛИЧЕСТВО НАЙДЕННЫХ ЭЛЕМЕНТОВ НА СТРАНИЦЕ МЕНЬШЕ ТРЕБУЕМОГО')
+    visited_links.append(driver.current_url)
+
+    try:
+        if num_links > len(driver.get_links_from_website(
+                css_elems=selectors_links['css_elems'],
+                xpath_elems=selectors_links['xpath_elems'])):
+            print(f'КОЛИЧЕСТВО НАЙДЕННЫХ ЭЛЕМЕНТОВ НА СТРАНИЦЕ МЕНЬШЕ ТРЕБУЕМОГО')
+            return False
+    except WebDriverException as e:
+        print(e)
         return False
 
     try:
@@ -165,53 +176,79 @@ def start_links_click(**kwargs):
 
 
 def main():
+    """Основная функция пакета
+
+    Включает в себя основной цикл взаимодействия с пользователем и вызывает необходимые
+    функции. Меню находится в бесконечном цикле (если, конечно, не возникнет исключение,
+    которое не перехватывается).
+    """
     driver = None
     data_for_request = dict()
+    selectors_for_links = dict()
 
     menu_func = {
-        'q': exit_prog,
-        '6': search_website_and_go,
         '5': set_search_engine,
-        '7': print_data_for_request,
         '1': set_search_phrase,
         '2': set_website_url,
         '3': set_geo_location,
         '4': set_timer,
-        '8': print_visited_links
     }
-    valid = list('12345678q')
+    valid = list('123456789q')
     while True:
         main_menu()
         choice = get_string('Пункт меню:', required=True, valid=valid)
-        menu_func[choice](driver=driver, data_for_request=data_for_request)
 
-    driver = Yandex(options=Options(), url='http://testsite.alex.org',
-                    search_engine=YANDEX, phrase='lamoda', website_url='lamoda.ru',
-                    geo_location='киров', timer=3)
+        ##########################################################################
+        # начать поиск сайта и просмотр его
+        ##########################################################################
+        if choice == '6':  # начать поиск сайта и просмотр его
+            try:
+                if data_for_request['search_engine'] == GOOGLE:
+                    driver = Google(options=Options(), **data_for_request)
+                elif data_for_request['search_engine'] == YANDEX:
+                    driver = Yandex(options=Options(), **data_for_request)
+                if search_website_and_go(driver=driver, selectors_for_links=selectors_for_links):
+                    with open(VISITED_LINKS_FILE, 'w') as f:
+                        for i in visited_links:
+                            f.write(i + '\n\n')
+            except WebDriverException as e:
+                print(e)
+        ##########################################################################
+        # вывести данные для запроса
+        ##########################################################################
+        elif choice == '7':  # вывести данные для запроса
+            print_data_for_request(data_for_request=data_for_request,
+                                   selectors_for_links=selectors_for_links)
+        ##########################################################################
+        # начать просмотр на последней вкладке. если driver'a нет создаем экземпляр
+        ##########################################################################
+        elif choice == '9':
+            try:
+                if driver is None:
+                    driver = Google(options=Options(), search_engine=GOOGLE)
 
-    driver.change_browser_location()
+                if start_links_click(driver=driver, selectors_for_links=selectors_for_links):
+                    with open(VISITED_LINKS_FILE, 'a') as f:
+                        for i in visited_links:
+                            f.write(i + '\n\n')
+            except WebDriverException as e:
+                print(e)
 
-    search_website_and_go(driver)
-    request_data = set_selectors_for_website_links()
+        ##########################################################################
+        # выход из программы
+        ##########################################################################
+        elif choice == 'q':
+            exit_prog(driver=driver)
 
-    for i in range(request_data['num_links_to_click']):
-        links = driver.get_links_from_website(xpath_elems=request_data['xpath_elems'])
-        links[i].click()
-        driver.page_scrolling()
-        driver.back()
+        ##########################################################################
+        # просмотр посещенных ссылок
+        ##########################################################################
+        elif choice == '8':
+            print_visited_links()
 
-    input()
-    driver.quit()
+        else:
+            menu_func[choice](data_for_request=data_for_request)
 
 
 if __name__ == '__main__':
-    driver = Yandex(options=Options(), url='http://testsite.alex.org',
-                    search_engine=YANDEX, phrase='lamoda', website_url='lamoda.ru',
-                    geo_location='киров', timer=5)
-    input('as')
-    # print(driver.current_window_handle)
-    win = driver.window_handles
-    print(win)
-    start_links_click(driver=driver, data_for_request=dict())
-    print(visited_links)
-    driver.quit()
+    main()

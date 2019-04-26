@@ -26,7 +26,6 @@ class Options(ChromeOptions):
 
 class Browser(Chrome):
     timer = None
-    url = None
     search_engine = None
     phrase = None
     website_url = None
@@ -51,7 +50,6 @@ class Browser(Chrome):
         self.search_engine = kwargs.get('search_engine', None)
         self.phrase = kwargs.get('phrase', None)
         self.website_url = kwargs.get('website_url', None)
-        self.url = kwargs.get('url', None)
         self.geo_location = kwargs.get('geo_location', None)
 
         self.get(self.search_engine)

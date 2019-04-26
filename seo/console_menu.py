@@ -1,20 +1,23 @@
-from colorama import init, Fore, Style, Back
+from colorama import init, Fore, Back
 
 init(autoreset=True)
 
 
 def main_menu():
-    print(Back.BLACK + f'{"":<80}')
-    print(Fore.LIGHTGREEN_EX + Back.BLACK + f'{"Меню":^80}')
-    print(Fore.LIGHTGREEN_EX + Back.BLACK + f'{"":-<80}')
-    print(Back.BLACK + f'{"":<80}')
-    print(Fore.LIGHTGREEN_EX + Back.BLACK + f'{"":<4}{"[1] ПОИСКОВАЯ ФРАЗА":<40}{"[5] ПОИСКОВИК":<36}')
-    print(Fore.LIGHTGREEN_EX + Back.BLACK + f'{"":<4}{"[2] URL ВЕБ-САЙТА":<40}{"[6] НАЧАТЬ ПРОСМОТР":<36}')
-    print(Fore.LIGHTGREEN_EX + Back.BLACK + f'{"":<4}{"[3] МЕСТОПОЛОЖЕНИЕ (только для ЯНДЕКС)":<40}{"[7] ПРОСМОТР ДАННЫХ ЗАПРОСА":<36}')
-    print(Fore.LIGHTGREEN_EX + Back.BLACK + f'{"":<4}{"[4] ТАЙМЕР":<40}{"[8] ПРОСМОТР ВЫХОДНЫХ ДАННЫХ":<36}')
-    print(Back.BLACK + f'{"":<80}')
-    print(Fore.LIGHTGREEN_EX + Back.BLACK + f'{"":<4}{"[Q] ВЫХОД":<76}')
-    print(Back.BLACK + f'{"":<80}')
+    print(Back.BLACK + f'{"":<94}')
+    print(Fore.LIGHTGREEN_EX + Back.BLACK + f'{"МЕНЮ":^94}')
+    print(Fore.LIGHTGREEN_EX + Back.BLACK + f'{"":-<94}')
+    print(Back.BLACK + f'{"":<94}')
+    print(Fore.LIGHTGREEN_EX + Back.BLACK + f'{"":<4}{"[1] ПОИСКОВАЯ ФРАЗА":<40}{"[5] ПОИСКОВИК":<50}')
+    print(Fore.LIGHTGREEN_EX + Back.BLACK + f'{"":<4}{"[2] URL ВЕБ-САЙТА":<40}{"[6] НАЧАТЬ ПРОСМОТР С ПОИСКОВИКА":<50}')
+    print(
+        Fore.LIGHTGREEN_EX + Back.BLACK + f'{"":<4}{"[3] МЕСТОПОЛОЖЕНИЕ (только для ЯНДЕКС)":<40}'
+        f'{"[7] ПРОСМОТР ДАННЫХ ЗАПРОСА":<50}')
+
+    print(Fore.LIGHTGREEN_EX + Back.BLACK + f'{"":<4}{"[4] ТАЙМЕР":<40}{"[8] ПРОСМОТР АДРЕСОВ ПОСЕЩЕННЫХ СТРАНИЦ":<50}')
+    print(Back.BLACK + Fore.LIGHTGREEN_EX + f'{"":<44}{"[9] НАЧАТЬ ПРОСМОТР ЛИНКОВ НА АКТИВНОЙ СТРАНИЦЕ":<50}')
+    print(Fore.LIGHTGREEN_EX + Back.BLACK + f'{"":<4}{"[Q] ВЫХОД":<90}')
+    print(Back.BLACK + f'{"":<94}')
 
 
 def search_engine_menu():
@@ -53,9 +56,11 @@ def get_integer(msg='', required=None, valid=None):
                 print('Обязательный параметр!')
         elif not line.isdigit():
             print('Ввести только цифры!')
+        elif line not in valid:
+            print(f'Choise from {valid}')
         else:
             return int(line)
 
 
 if __name__ == "__main__":
-    search_engine_menu()
+    main_menu()
