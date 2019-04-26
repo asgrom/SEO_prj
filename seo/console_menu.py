@@ -17,7 +17,12 @@ def main_menu():
     print(Back.BLACK + f'{"":<80}')
 
 
-def get_string(msg, required=None):
+def search_engine_menu():
+    print(f'{"":<4}{"[1] Yandex"}')
+    print(f'{"":<4}{"[2] Google"}')
+
+
+def get_string(msg, required=None, valid=None):
     """Получение и валидация ввода запрошенной строки"""
     msg = msg + '\n  >>>  '
     while True:
@@ -27,11 +32,16 @@ def get_string(msg, required=None):
                 return ''
             else:
                 print('Обязательный параметр!')
+        elif valid is not None:
+            if line not in valid:
+                print(f'Choice one of {valid}')
+            else:
+                return line
         else:
             return line
 
 
-def get_integer(msg, required=None):
+def get_integer(msg, required=None, valid=None):
     """Получение и валидация запрошенной цифровой строки"""
     msg += '\n  >>>  '
     while True:
@@ -48,4 +58,4 @@ def get_integer(msg, required=None):
 
 
 if __name__ == "__main__":
-    pass
+    search_engine_menu()
