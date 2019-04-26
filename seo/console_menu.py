@@ -22,7 +22,7 @@ def search_engine_menu():
     print(f'{"":<4}{"[2] Google"}')
 
 
-def get_string(msg, required=None, valid=None):
+def get_string(msg='', required=None, valid=None):
     """Получение и валидация ввода запрошенной строки"""
     msg = msg + '\n  >>>  '
     while True:
@@ -41,7 +41,7 @@ def get_string(msg, required=None, valid=None):
             return line
 
 
-def get_integer(msg, required=None, valid=None):
+def get_integer(msg='', required=None, valid=None):
     """Получение и валидация запрошенной цифровой строки"""
     msg += '\n  >>>  '
     while True:
