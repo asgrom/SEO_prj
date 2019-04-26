@@ -31,7 +31,10 @@ class Browser(Chrome):
     phrase = None
     website_url = None
     geo_location = None
+
+    # xpath для поиска ссылок на странице выдачи
     xpath_for_links_on_search_page = None
+
     xpath_for_paginator_next = None
     xpath_search_field = None
 
@@ -81,7 +84,7 @@ class Browser(Chrome):
     def get_links_from_website(self, css_elems=None, xpath_elems=None):
         """Поиск элементов для кликов на странице сайта
 
-        :return: список элементов, содержащих ссылку
+        :return: список элементов, содержащих ссылку для клика
         """
         elem_links = None
         try:
@@ -100,7 +103,7 @@ class Browser(Chrome):
         """
         Рекурсивный поиск ссылки на искомый сайт на странице выдачи
 
-        :return: ссылку на сайт
+        :return: ссылку на искомый сайт
         """
 
         try:
@@ -124,15 +127,6 @@ class Browser(Chrome):
             return None
 
         return self._find_link_in_search_result()
-
-    def window_count(self):
-        windows = self.window_handles
-        print(self.current_window_handle)
-        print(windows)
-        self.switch_to.window(windows[-1])
-        sleep(10)
-        print(self.window_handles)
-        print(self.current_window_handle)
 
 
 if __name__ == '__main__':
