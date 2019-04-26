@@ -51,6 +51,7 @@ class Browser(Chrome):
         self.url = kwargs.get('url', None)
         self.geo_location = kwargs.get('geo_location', None)
 
+        self.get(self.search_engine)
         self.visited_pages = list()
         self.implicitly_wait(5)
 
@@ -59,12 +60,10 @@ class Browser(Chrome):
 
         :return: ссылка на искомый сайт
         """
-        self.get(self.search_engine)
-
         search_field = self.find_element_by_xpath(self.xpath_search_field)
         search_field.clear()
         search_field.send_keys(self.phrase)
-        search_field.send_keys(Keys.ENTER)
+        search_field.send_keys(Keys.RETURN)
 
         found_website_link = self._find_link_in_search_result()
 
@@ -74,7 +73,7 @@ class Browser(Chrome):
         """Прокрутка страницы"""
         height = self.execute_script('return document.body.scrollHeight;')
         html = self.find_element_by_tag_name('html')
-        t = 1 / (height / 60 / self.data_for_request['timer'])
+        t = 1 / (height / 60 / self.timer)
         for _ in tqdm(range(int(height / 60)), desc='Прокрутка страницы', unit='click'):
             html.send_keys(Keys.DOWN)
             sleep(t)

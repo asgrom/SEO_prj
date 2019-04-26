@@ -1,3 +1,5 @@
+import time
+
 from .browser import Options
 from .yandex_search import Yandex
 from selenium.webdriver.common.action_chains import ActionChains
@@ -61,8 +63,13 @@ def search_website_and_go(drv):
     Прежде чем перейти на сайт, выводится сообщение и происходит задерка. Это надо для того,
     если по условию задания надо посетить другие сайто до найденого.
     """
+    status = None
+
     link = drv.search_website_link()
-    if link is not None:
+    if link is None:
+        return status
+
+    try:
         # притормозим просмотр. вдруг по условиям надо просмотреть другие сайты
         input('ССЫЛКА НА САЙТ НАЙДЕНА\nПРОДОЛЖИТЬ? >>> ')
         # drv.execute_script(f"arguments[0].scrollIntoView(true);", link)
@@ -76,8 +83,12 @@ def search_website_and_go(drv):
 
         # сделать новую вкладку активной
         drv.switch_to.window(drv.window_handles[-1])
+        status = True
+    except Exception as e:
+        print(e)
+        return status
 
-    return
+    return status
 
 
 # todo: page_css_selector
@@ -85,21 +96,20 @@ def search_website_and_go(drv):
 #       происходил до того, как вводится селектор ссылок.
 def main():
     drv = Yandex(options=Options(), url='http://testsite.alex.org',
-                 search_engine=YANDEX, phrase='lamoda', website_url='lamoda.ru')
+                 search_engine=YANDEX, phrase='lamoda', website_url='lamoda.ru',
+                 geo_location='киров', timer=3)
+
+    drv.change_browser_location()
 
     search_website_and_go(drv)
-    # print(links)
-    # links.click()
-    # drv.window_count()
-    # drv.find_element_by_css_selector(
-    #     get_string('CSS-селектор страницы на которой будем искать', required=True)).click()
-    # selectors_for_elems = set_selectors_for_website_links()
-    # elem_links = drv.get_links_from_website(
-    #     css_elems=selectors_for_elems['css_elems'],
-    #     xpath_elems=selectors_for_elems['xpath_elems']
-    # )
-    # drv.get_screenshot_as_file('screenshot')
-    # print(elem_links)
+    request_data = set_selectors_for_website_links()
+
+    for i in range(request_data['num_links_to_click']):
+        links = drv.get_links_from_website(xpath_elems=request_data['xpath_elems'])
+        links[i].click()
+        drv.page_scrolling()
+        drv.back()
+
     input()
     drv.close()
 
