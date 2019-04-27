@@ -193,6 +193,7 @@ def driver_init(driver, data_for_request):
             # если драйвер существует обновляем его атрибуты из словаря с данными для запросов
             for k, v in data_for_request.items():
                 setattr(driver, k, v)
+                print(v, k, getattr(driver, k))
 
             driver.get(GOOGLE)
             driver.switch_to.window(driver.window_handles[-1])
