@@ -16,9 +16,9 @@ GOOGLE = 'https://google.ru'
 MAILRU = 'https://mail.ru'
 YANDEX = 'https://yandex.ru'
 
-visited_links = list()
+VISITED_LINKS = list()
 FILE_DATA_FOR_REQUEST = os.path.join(os.environ['HOME'], '.local/share/seo/data_for_request')
-VISITED_LINKS_FILE = os.path.join(os.environ['HOME'], 'Документы/seo_visited_links')
+VISITED_LINKS_FILE = os.path.join(os.environ['HOME'], 'Документы/seo_VISITED_LINKS')
 
 
 def set_selectors_for_website_links():
@@ -55,7 +55,7 @@ def search_website_and_go(driver, selectors_for_links):
     link = driver.search_website_link()
     if link is None:
         return status
-    visited_links.append(f'Ссылка с поисковика:\n{link.get_attribute("href")}')
+    VISITED_LINKS.append(f'Ссылка с поисковика:\n{link.get_attribute("href")}')
 
     try:
         # притормозим просмотр. вдруг по условиям надо просмотреть другие сайты
@@ -119,7 +119,7 @@ def set_timer(data_for_request):
     data_for_request['timer'] = get_integer('Timer:', required=True)
 
 
-def print_visited_links():
+def print_VISITED_LINKS():
     try:
         Popen(['gvim', VISITED_LINKS_FILE])
         with open(VISITED_LINKS_FILE) as f:
@@ -136,7 +136,6 @@ def start_links_click(driver, selectors_for_links):
     Селекторы линков добавляем в словарь data_for_request.
     Добавлена возможность переопределить таймер.
     """
-    driver = driver
     selectors_links = set_selectors_for_website_links()
     selectors_for_links.update(selectors_links)
     num_links = selectors_links['num_links_to_click']
@@ -148,7 +147,7 @@ def start_links_click(driver, selectors_for_links):
 
     driver.switch_to.window(driver.window_handles[-1])
 
-    visited_links.append(driver.current_url)
+    VISITED_LINKS.append(driver.current_url)
 
     try:
         if num_links > len(driver.get_links_from_website(
@@ -166,13 +165,19 @@ def start_links_click(driver, selectors_for_links):
                                                   xpath_elems=selectors_links['xpath_elems'])
             links[i].click()
             driver.page_scrolling()
-            visited_links.append(driver.current_url)
+            VISITED_LINKS.append(driver.current_url)
             driver.back()
     except WebDriverException as e:
         print(e)
         return False
 
     return True
+
+
+def write_visited_links(mode='w'):
+    with open(VISITED_LINKS_FILE, mode=mode) as f:
+        for i in VISITED_LINKS:
+            f.write(f'{i}\n\n')
 
 
 def main():
@@ -201,7 +206,12 @@ def main():
         ##########################################################################
         # начать поиск сайта и просмотр его
         ##########################################################################
-        if choice == '6':  # начать поиск сайта и просмотр его
+        if choice == '6':
+            # todo:
+            #       инициализацию экземпляра драйвера браузера вынести в отдельную функцию
+            #       провести проверку словаря data_for_request на наличие ключа search_engine - это
+            #       может пригодится при повторном поиске веб-сайта через поисковик. Или если вдруг
+            #       забыл ввести поисковик. Можно установить поисковик по-умолчанию.
             try:
                 if not driver:
                     if data_for_request['search_engine'] == GOOGLE:
@@ -215,15 +225,15 @@ def main():
             except WebDriverException as e:
                 print(e)
 
-            with open(VISITED_LINKS_FILE, 'w') as f:
-                for i in visited_links:
-                    f.write(i + '\n\n')
+            write_visited_links(mode='w')
+
         ##########################################################################
         # вывести данные для запроса
         ##########################################################################
         elif choice == '7':  # вывести данные для запроса
             print_data_for_request(data_for_request=data_for_request,
                                    selectors_for_links=selectors_for_links)
+
         ##########################################################################
         # начать просмотр на последней вкладке. если driver'a нет создаем экземпляр
         ##########################################################################
@@ -231,14 +241,11 @@ def main():
             try:
                 if driver is None:
                     driver = Google(options=Options(), search_engine=GOOGLE)
-
                 start_links_click(driver=driver, selectors_for_links=selectors_for_links)
             except WebDriverException as e:
                 print(e)
 
-            with open(VISITED_LINKS_FILE, 'a') as f:
-                for i in visited_links:
-                    f.write(i + '\n\n')
+            write_visited_links(mode='a')
 
         ##########################################################################
         # выход из программы
@@ -250,7 +257,7 @@ def main():
         # просмотр посещенных ссылок
         ##########################################################################
         elif choice == '8':
-            print_visited_links()
+            print_VISITED_LINKS()
 
         else:
             menu_func[choice](data_for_request=data_for_request)

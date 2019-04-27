@@ -53,7 +53,6 @@ class Browser(Chrome):
         self.geo_location = kwargs.get('geo_location', None)
 
         self.get(self.search_engine)
-        self.visited_pages = list()
         self.implicitly_wait(5)
 
     def search_website_link(self):
