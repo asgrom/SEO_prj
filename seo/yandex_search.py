@@ -21,6 +21,12 @@ class Yandex(Browser):
         self.get(self.search_engine)
         geo_link = self.find_element_by_xpath('//a[contains(@class, "geolink")]')
         geo_link.click()
+
+        # снятие выбора в чекбоксе автоматического определения местоположения
+        chkbox = self.find_element_by_xpath('//input[@class="checkbox__control"]')
+        if chkbox.is_selected():
+            chkbox.click()
+
         geo_input = self.find_element_by_xpath('//input[@name="name"]')
         geo_input.click()
         geo_input.clear()

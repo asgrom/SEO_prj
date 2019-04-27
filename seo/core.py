@@ -119,7 +119,7 @@ def set_timer(data_for_request):
     data_for_request['timer'] = get_integer('Timer:', required=True)
 
 
-def print_VISITED_LINKS():
+def print_visited_links():
     try:
         Popen(['gvim', VISITED_LINKS_FILE])
         with open(VISITED_LINKS_FILE) as f:
@@ -190,6 +190,10 @@ def driver_init(driver, data_for_request):
             elif data_for_request['search_engine'] == YANDEX:
                 driver = Yandex(options=Options(), **data_for_request)
         else:
+            # если драйвер существует обновляем его атрибуты из словаря с данными для запросов
+            for k, v in data_for_request.items():
+                setattr(driver, k, v)
+
             driver.get(GOOGLE)
             driver.switch_to.window(driver.window_handles[-1])
     except WebDriverException as e:
@@ -224,16 +228,22 @@ def main():
         # начать поиск сайта и просмотр его
         ##########################################################################
         if choice == '6':
-            driver = driver_init(driver, data_for_request)
-            search_website_and_go(driver=driver, selectors_for_links=selectors_for_links)
+            try:
+                driver = driver_init(driver, data_for_request)
+                search_website_and_go(driver=driver, selectors_for_links=selectors_for_links)
+            except Exception as e:
+                print(e)
             write_visited_links(mode='w')
 
         ##########################################################################
         # вывести данные для запроса
         ##########################################################################
         elif choice == '7':  # вывести данные для запроса
-            print_data_for_request(data_for_request=data_for_request,
-                                   selectors_for_links=selectors_for_links)
+            try:
+                print_data_for_request(data_for_request=data_for_request,
+                                       selectors_for_links=selectors_for_links)
+            except Exception as e:
+                print(e)
 
         ##########################################################################
         # начать просмотр на последней вкладке. если driver'a нет создаем экземпляр
@@ -258,10 +268,16 @@ def main():
         # просмотр посещенных ссылок
         ##########################################################################
         elif choice == '8':
-            print_VISITED_LINKS()
+            try:
+                print_visited_links()
+            except Exception as e:
+                print(e)
 
         else:
-            menu_func[choice](data_for_request=data_for_request)
+            try:
+                menu_func[choice](data_for_request=data_for_request)
+            except Exception as e:
+                print(e)
 
 
 if __name__ == '__main__':
