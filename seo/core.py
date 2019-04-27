@@ -18,7 +18,7 @@ YANDEX = 'https://yandex.ru'
 
 VISITED_LINKS = list()
 FILE_DATA_FOR_REQUEST = os.path.join(os.environ['HOME'], '.local/share/seo/data_for_request')
-VISITED_LINKS_FILE = os.path.join(os.environ['HOME'], 'Документы/seo_VISITED_LINKS')
+VISITED_LINKS_FILE = os.path.join(os.environ['HOME'], 'Документы/seo_visited_links')
 
 
 def set_selectors_for_website_links():
