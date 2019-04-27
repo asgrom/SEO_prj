@@ -26,8 +26,10 @@ class Yandex(Browser):
         chkbox = self.find_element_by_xpath('//input[@class="checkbox__control"]')
         if chkbox.is_selected():
             chkbox.click()
+
         import time
         time.sleep(1)
+
         geo_input = self.find_element_by_xpath('//input[@name="name"]')
         geo_input.click()
         geo_input.clear()
