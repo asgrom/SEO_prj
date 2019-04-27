@@ -194,8 +194,7 @@ def driver_init(driver, data_for_request):
             for k, v in data_for_request.items():
                 setattr(driver, k, v)
                 print(v, k, getattr(driver, k))
-
-            driver.get(GOOGLE)
+            driver.get(data_for_request['search_engine'])
             driver.switch_to.window(driver.window_handles[-1])
     except WebDriverException as e:
         print(e)
