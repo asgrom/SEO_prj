@@ -180,6 +180,23 @@ def write_visited_links(mode='w'):
             f.write(f'{i}\n\n')
 
 
+def driver_init(driver, data_for_request):
+    try:
+        if not driver:
+            if 'search_engine' not in data_for_request:
+                set_search_engine(data_for_request)
+            if data_for_request['search_engine'] == GOOGLE:
+                driver = Google(options=Options(), **data_for_request)
+            elif data_for_request['search_engine'] == YANDEX:
+                driver = Yandex(options=Options(), **data_for_request)
+        else:
+            driver.get(GOOGLE)
+            driver.switch_to.window(driver.window_handles[-1])
+    except WebDriverException as e:
+        print(e)
+    return driver
+
+
 def main():
     """Основная функция пакета
 
@@ -212,19 +229,8 @@ def main():
             #       провести проверку словаря data_for_request на наличие ключа search_engine - это
             #       может пригодится при повторном поиске веб-сайта через поисковик. Или если вдруг
             #       забыл ввести поисковик. Можно установить поисковик по-умолчанию.
-            try:
-                if not driver:
-                    if data_for_request['search_engine'] == GOOGLE:
-                        driver = Google(options=Options(), **data_for_request)
-                    elif data_for_request['search_engine'] == YANDEX:
-                        driver = Yandex(options=Options(), **data_for_request)
-                else:
-                    driver.get(GOOGLE)
-                    driver.switch_to.window(driver.window_handles[-1])
-                search_website_and_go(driver=driver, selectors_for_links=selectors_for_links)
-            except WebDriverException as e:
-                print(e)
-
+            driver = driver_init(driver, data_for_request)
+            search_website_and_go(driver=driver, selectors_for_links=selectors_for_links)
             write_visited_links(mode='w')
 
         ##########################################################################
