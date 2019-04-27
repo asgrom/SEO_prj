@@ -14,6 +14,10 @@ class Yandex(Browser):
     xpath_for_paginator_next = '//div[contains(@class, "pager")]/a[contains(text(),"дальше")]'
 
     def change_browser_location(self):
+        """
+        Если в чекбоксе 'Автоматическое местоположение' невозможно сменить город.
+        """
+        # todo: реализовать проверку на наличие галки в чекбоксе
         self.get(self.search_engine)
         geo_link = self.find_element_by_xpath('//a[contains(@class, "geolink")]')
         geo_link.click()
