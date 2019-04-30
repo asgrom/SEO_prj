@@ -37,12 +37,6 @@ class Browser(Chrome):
     xpath_for_paginator_next = None
     xpath_search_field = None
 
-    # todo:
-    #       функцию для просмотра сайта рекламы.
-    #       подумать может ее отдельно не делать, а совместить с функцией получения ссылок с сайта.
-    #       все равно они делают похожую работу.
-    #       а для кликов сделать отдельную функцию. что так и будет.
-
     def __init__(self, options=None, **kwargs):
         super().__init__(options=options)
 

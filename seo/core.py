@@ -2,6 +2,7 @@ import os
 import sys
 from pprint import pprint
 from subprocess import Popen
+import json
 
 from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.common.action_chains import ActionChains
@@ -193,7 +194,6 @@ def driver_init(driver, data_for_request):
             # если драйвер существует обновляем его атрибуты из словаря с данными для запросов
             for k, v in data_for_request.items():
                 setattr(driver, k, v)
-                print(v, k, getattr(driver, k))
             driver.get(data_for_request['search_engine'])
             driver.switch_to.window(driver.window_handles[-1])
     except WebDriverException as e:
@@ -229,6 +229,8 @@ def main():
         ##########################################################################
         if choice == '6':
             try:
+                with open(FILE_DATA_FOR_REQUEST, 'w') as f:
+                    json.dump(data_for_request, f, ensure_ascii=False, indent=2)
                 driver = driver_init(driver, data_for_request)
                 search_website_and_go(driver=driver, selectors_for_links=selectors_for_links)
             except Exception as e:
@@ -239,6 +241,7 @@ def main():
         # вывести данные для запроса
         ##########################################################################
         elif choice == '7':  # вывести данные для запроса
+            # todo: сделать меню выбора просмотра файла с данными или словарь
             try:
                 print_data_for_request(data_for_request=data_for_request,
                                        selectors_for_links=selectors_for_links)
@@ -250,10 +253,14 @@ def main():
         ##########################################################################
         elif choice == '9':
             try:
+                with open(FILE_DATA_FOR_REQUEST, 'w') as f:
+                    json.dump(data_for_request, f, ensure_ascii=False, indent=2)
                 if driver is None:
                     driver = Google(options=Options(), search_engine=GOOGLE)
                 start_links_click(driver=driver, selectors_for_links=selectors_for_links)
             except WebDriverException as e:
+                print(e)
+            except Exception as e:
                 print(e)
 
             write_visited_links(mode='a')
