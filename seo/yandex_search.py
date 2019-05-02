@@ -34,5 +34,5 @@ class Yandex(Browser):
         geo_input.clear()
         geo_input.send_keys(self.geo_location)
         time.sleep(1)
-        geo_input.send_keys(Keys.ENTER)
+        geo_input.send_keys(Keys.RETURN)
         geo_input.send_keys(Keys.RETURN)

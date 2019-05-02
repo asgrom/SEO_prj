@@ -8,6 +8,10 @@ from selenium.webdriver.common.keys import Keys
 from tqdm import tqdm
 
 
+class ErrorExcept(Exception):
+    pass
+
+
 class Options(ChromeOptions):
     opt = [
         f'user-data-dir={os.path.join(os.environ["HOME"], ".local/share/seo", "chrome/profile")}',
@@ -25,11 +29,11 @@ class Options(ChromeOptions):
 
 
 class Browser(Chrome):
-    timer = None
-    search_engine = None
-    phrase = None
-    website_url = None
-    geo_location = None
+    # timer = None
+    # search_engine = None
+    # phrase = None
+    # website_url = None
+    # geo_location = None
 
     # xpath для поиска ссылок на странице выдачи
     xpath_for_links_on_search_page = None
@@ -46,8 +50,9 @@ class Browser(Chrome):
         self.website_url = kwargs.get('website_url', None)
         self.geo_location = kwargs.get('geo_location', None)
 
-        self.get(self.search_engine)
         self.implicitly_wait(5)
+        if not self.get(self.search_engine).title:
+            raise ErrorExcept('ОШИБКА ЗАГРУЗКИ СТРАНИЦЫ ПОИСКОВОЙ СИСТЕМЫ')
 
     def search_website_link(self):
         """Поиск ссылки на искомый сайт на странице выдачи поиска
