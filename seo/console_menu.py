@@ -8,7 +8,7 @@ def main_menu():
     print(Fore.LIGHTGREEN_EX + Back.BLACK + f'{"МЕНЮ":^94}')
     print(Fore.LIGHTGREEN_EX + Back.BLACK + f'{"":-<94}')
     print(Back.BLACK + f'{"":<94}')
-    print(Fore.LIGHTGREEN_EX + Back.BLACK + f'{"":<4}{"[1] ПОИСКОВАЯ ФРАЗА":<40}{"[5] ПОИСКОВИК":<50}')
+    print(Fore.LIGHTGREEN_EX + Back.BLACK + f'{"":<4}{"[1] ФРАЗА ДЛЯ ПОИСКА":<40}{"[5] ПОИСКОВИК":<50}')
     print(
         Fore.LIGHTGREEN_EX + Back.BLACK + f'{"":<4}{"[2] URL ВЕБ-САЙТА":<40}'
         f'{Fore.LIGHTBLUE_EX + Style.BRIGHT}{"[6] НАЧАТЬ ПРОСМОТР С ПОИСКОВИКА":<50}')

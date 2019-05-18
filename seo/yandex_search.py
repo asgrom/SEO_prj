@@ -13,6 +13,8 @@ class Yandex(Browser):
 
     xpath_for_paginator_next = '//div[contains(@class, "pager")]/a[contains(text(),"дальше")]'
 
+    search_engine = 'https://yandex.ru'
+
     def change_browser_location(self):
         """
         Если в чекбоксе 'Автоматическое местоположение' невозможно сменить город.

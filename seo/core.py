@@ -16,38 +16,41 @@ from .yandex_search import Yandex
 GOOGLE = 'https://google.ru'
 MAILRU = 'https://mail.ru'
 YANDEX = 'https://yandex.ru'
-# todo: пересмотреть все вызовы исключений
+
 visited_links = list()
+
 FILE_DATA_FOR_REQUEST = os.path.join(os.environ['HOME'], '.local/share/seo/data_for_request')
+
 VISITED_LINKS_FILE = os.path.join(os.environ['HOME'], 'Документы/seo_visited_links')
 
 
 def set_selectors_for_website_links():
     """Задать селекторы для ссылок, которые нужно посетить на сайте"""
-    # page_css_selector = get_string('CSS-селектор страницы на которой будем искать')
     css_elems = get_string(msg='CSS-селектор элементов')
     xpath_elems = get_string(msg='XPATH элементов')
     num_links_to_click = get_integer('Количество ссылок', required=True)
     timer = get_integer('Переопределить таймер?')
-    return (dict(
-        # page_css_selector=page_css_selector,
+    return dict(
         css_elems=css_elems,
         xpath_elems=xpath_elems,
         num_links_to_click=num_links_to_click,
         timer=timer
-    ))
+    )
 
 
-def search_website_and_go(driver, selectors_for_links):
+def find_website_link(driver):
     """Поиск сайта и переход на него
 
     Если ссылка на сайт найдена, переходим на него и делаем вкладку с ним активной.
     Прежде чем перейти на сайт, выводится сообщение и происходит задерка. Это надо для того,
     если по условию задания надо посетить другие сайто до найденого."""
-    if driver.geo_location is not None:
+
+    # устанавливаем местоположение если поисковик яндекс и если задан город местоположения
+    if driver.geo_location is not None and driver.search_engine == YANDEX:
         driver.change_browser_location()
 
-    link = driver.search_website_link()
+    # ссылка на искомый веб-сайт
+    link = driver.find_website_link()
     if link is None:
         raise ErrorExcept('ССЫЛКИ НА ИСКОМЫЙ САЙТ НЕ НАЙДЕНО')
     visited_links.append(f'Ссылка с поисковика:\n{link.get_attribute("href")}')
@@ -68,7 +71,6 @@ def search_website_and_go(driver, selectors_for_links):
         driver.switch_to.window(driver.window_handles[-1])
     except Exception as e:
         raise ErrorExcept(f'ОШИБКА ПЕРЕХОДА ПО ССЫЛКЕ С ПОИСКОВИКА\n{e}')
-    start_links_click(driver=driver, selectors_for_links=selectors_for_links)
 
 
 def exit_prog(driver):
@@ -128,12 +130,12 @@ def start_links_click(driver, selectors_for_links):
     Селекторы линков добавляем в словарь data_for_request.
     Добавлена возможность переопределить таймер.
     """
-    selectors_links = set_selectors_for_website_links()
-    selectors_for_links.update(selectors_links)
-    num_links = selectors_links['num_links_to_click']
+    selectors_for_links.clear()
+    selectors_for_links.update(set_selectors_for_website_links())
+    num_links = selectors_for_links['num_links_to_click']
 
-    if selectors_links['timer']:
-        driver.timer = selectors_links['timer']
+    if selectors_for_links['timer']:
+        driver.timer = selectors_for_links['timer']
     elif driver.timer is None:
         driver.timer = get_integer('Необходимо установить таймер:', required=True)
 
@@ -141,18 +143,14 @@ def start_links_click(driver, selectors_for_links):
 
     visited_links.append(driver.current_url)
 
-    try:
-        if num_links > len(driver.get_links_from_website(
-                css_elems=selectors_links['css_elems'],
-                xpath_elems=selectors_links['xpath_elems'])):
-            raise ErrorExcept(f'КОЛИЧЕСТВО НАЙДЕННЫХ ЭЛЕМЕНТОВ НА СТРАНИЦЕ МЕНЬШЕ ТРЕБУЕМОГО')
-    except WebDriverException as e:
-        raise ErrorExcept(f'ОШИБКА!!! ПРИ ПОИСКЕ ЭЛЕМЕНТОВ НА СТРАНИЦЕ\n{e}')
+    if num_links > len(driver.get_links_from_website(css_elems=selectors_for_links['css_elems'],
+                                                     xpath_elems=selectors_for_links['xpath_elems'])):
+        raise ErrorExcept(f'КОЛИЧЕСТВО НАЙДЕННЫХ ЭЛЕМЕНТОВ НА СТРАНИЦЕ МЕНЬШЕ ТРЕБУЕМОГО')
 
     try:
         for i in range(num_links):
-            links = driver.get_links_from_website(css_elems=selectors_links['css_elems'],
-                                                  xpath_elems=selectors_links['xpath_elems'])
+            links = driver.get_links_from_website(css_elems=selectors_for_links['css_elems'],
+                                                  xpath_elems=selectors_for_links['xpath_elems'])
             links[i].click()
             driver.page_scrolling()
             visited_links.append(driver.current_url)
@@ -162,31 +160,38 @@ def start_links_click(driver, selectors_for_links):
 
 
 def write_visited_links(mode='w'):
-    with open(VISITED_LINKS_FILE, mode=mode) as f:
-        for i in visited_links:
-            f.write(f'{i}\n\n')
+    try:
+        with open(VISITED_LINKS_FILE, mode=mode) as f:
+            for i in visited_links:
+                f.write(f'{i}\n\n')
+    except Exception as e:
+        print(f'ОШИБКА ЗАПИСИ В ФАЙЛ ПОСЕЩЕННЫХ ЛИНКОВ\n{e}')
+
+
+def write_data_for_request(data_dict):
+    try:
+        with open(FILE_DATA_FOR_REQUEST, 'w') as f:
+            json.dump(data_dict, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        print(f'ОШИБКА ЗАПИСИ ДАННЫХ ЗАПРОСА\n{e}')
 
 
 def driver_init(driver, data_for_request):
     try:
         if 'search_engine' not in data_for_request:
             set_search_engine(data_for_request)
-        if not driver:
-            if data_for_request['search_engine'] == GOOGLE:
-                driver = Google(options=Options(), **data_for_request)
-            elif data_for_request['search_engine'] == YANDEX:
-                driver = Yandex(options=Options(), **data_for_request)
-        else:
-            # если драйвер существует обновляем его атрибуты из словаря с данными для запросов
-            for k, v in data_for_request.items():
-                setattr(driver, k, v)
-            driver.switch_to.window(driver.window_handles[-1])
-            driver.get(data_for_request['search_engine'])
-            if not driver.title:
-                raise ErrorExcept('ОШИБКА ЗАГРУЗКИ СТРАНИЦЫ ПОИСКОВИКА')
+
+        if driver is not None:
+            driver.quit()
+
+        if data_for_request['search_engine'] == GOOGLE:
+            driver = Google(options=Options(), **data_for_request)
+        elif data_for_request['search_engine'] == YANDEX:
+            driver = Yandex(options=Options(), **data_for_request)
+
+        return driver
     except (WebDriverException, Exception) as e:
         raise ErrorExcept(f'ОШИБКА В ИНИЦИАЛИЗАЦИИ ДРАЙВЕРА\n{e}')
-    return driver
 
 
 def main():
@@ -216,11 +221,11 @@ def main():
         # начать поиск сайта и просмотр его
         ##########################################################################
         if choice == '6':
+            write_data_for_request(data_for_request)
             try:
-                with open(FILE_DATA_FOR_REQUEST, 'w') as f:
-                    json.dump(data_for_request, f, ensure_ascii=False, indent=2)
                 driver = driver_init(driver, data_for_request)
-                search_website_and_go(driver=driver, selectors_for_links=selectors_for_links)
+                find_website_link(driver=driver)
+                start_links_click(driver, selectors_for_links)
             except Exception as e:
                 print(f'ОШИБКА!!! В МЕНЮ "НАЧАТЬ ПРОСМОТР ИЗ ПОИСКОВИКА"\n{e}')
             write_visited_links(mode='w')
@@ -240,15 +245,12 @@ def main():
         # начать просмотр на последней вкладке. если driver'a нет создаем экземпляр
         ##########################################################################
         elif choice == '9':
+            write_data_for_request(data_for_request)
             try:
-                with open(FILE_DATA_FOR_REQUEST, 'w') as f:
-                    json.dump(data_for_request, f, ensure_ascii=False, indent=2)
                 if driver is None:
                     driver = Google(options=Options(), search_engine=GOOGLE)
                 start_links_click(driver=driver, selectors_for_links=selectors_for_links)
-            except WebDriverException as e:
-                print(e)
-            except Exception as e:
+            except (WebDriverException, Exception) as e:
                 print(e)
 
             write_visited_links(mode='a')
@@ -263,10 +265,7 @@ def main():
         # просмотр посещенных ссылок
         ##########################################################################
         elif choice == '8':
-            try:
-                print_visited_links()
-            except Exception as e:
-                print(e)
+            print_visited_links()
 
         else:
             try:

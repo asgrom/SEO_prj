@@ -29,32 +29,24 @@ class Options(ChromeOptions):
 
 
 class Browser(Chrome):
-    # timer = None
-    # search_engine = None
-    # phrase = None
-    # website_url = None
-    # geo_location = None
-
-    # xpath для поиска ссылок на странице выдачи
     xpath_for_links_on_search_page = None
-
     xpath_for_paginator_next = None
     xpath_search_field = None
+    search_engine = None
 
     def __init__(self, options=None, **kwargs):
         super().__init__(options=options)
 
         self.timer = kwargs.get('timer', None)
-        self.search_engine = kwargs.get('search_engine', None)
+        # self.search_engine = kwargs.get('search_engine', None)
         self.phrase = kwargs.get('phrase', None)
         self.website_url = kwargs.get('website_url', None)
         self.geo_location = kwargs.get('geo_location', None)
 
         self.implicitly_wait(5)
-        if not self.get(self.search_engine).title:
-            raise ErrorExcept('ОШИБКА ЗАГРУЗКИ СТРАНИЦЫ ПОИСКОВОЙ СИСТЕМЫ')
+        self.get(self.search_engine)
 
-    def search_website_link(self):
+    def find_website_link(self):
         """Поиск ссылки на искомый сайт на странице выдачи поиска
 
         :return: ссылка на искомый сайт
@@ -64,7 +56,7 @@ class Browser(Chrome):
         search_field.send_keys(self.phrase)
         search_field.send_keys(Keys.RETURN)
 
-        found_website_link = self._find_link_in_search_result()
+        found_website_link = self.find_link_in_search_result()
 
         return found_website_link
 
@@ -95,7 +87,7 @@ class Browser(Chrome):
             print(e)
         return elem_links
 
-    def _find_link_in_search_result(self):
+    def find_link_in_search_result(self):
         """
         Рекурсивный поиск ссылки на искомый сайт на странице выдачи
 
@@ -104,8 +96,7 @@ class Browser(Chrome):
 
         try:
             # поиск всех ссылок на странице выдачи
-            found_links = self.find_elements_by_xpath(
-                self.xpath_for_links_on_search_page)
+            found_links = self.find_elements_by_xpath(self.xpath_for_links_on_search_page)
         except WebDriverException:
             print('ОШИБКА ПОИСКА ССЫЛОК В ВЫДАЧЕ')
             return None
@@ -122,7 +113,11 @@ class Browser(Chrome):
             print('ДОСТИГЛИ КОНЦА ПОИСКА')
             return None
 
-        return self._find_link_in_search_result()
+        return self.find_link_in_search_result()
+
+    def update(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
 
 
 if __name__ == '__main__':
