@@ -3,7 +3,7 @@
 #
 
 from urwid import *
-import datetime
+from seo import seo_urwid
 
 __VERSION__ = '0.2'
 
@@ -16,7 +16,8 @@ search_engines = dict(
 palette = [
     ('focused', 'white', 'dark blue'),
     ('btn', 'black', 'light gray'),
-    ('popup', 'black', 'light gray')
+    ('popup', 'black', 'light gray'),
+    ('important', 'light red,bold', '')
 ]
 
 
@@ -31,28 +32,33 @@ class MyPile(Pile):
             return
         return super().keypress(size, key)
 
-    def mouse_event(self, size, event, btn, col, row, focus):
-        return super().mouse_event(size, event, btn, col, row, focus)
-
 
 def restore_widget():
     main_wgt.original_widget = main_wgt.original_widget[0]
 
 
+def print_msg(obj):
+    msg_wgt.base_widget.set_text(str(obj))
+
+
 def popup_message(message, btn_label='продолжить', callback=None):
     text_wgt = Text(message, 'center')
-    if not callback:
-        callback = restore_widget
-    btn = button(btn_label.upper(), lambda x: callback(), size=len(btn_label) + 4)
+    btn = button(btn_label.upper(), size=len(btn_label) + 4)
+
+    connect_signal(btn.base_widget, 'click', lambda x: restore_widget())
+    if callback is not None:
+        connect_signal(btn.base_widget, 'click', lambda x: callback())
+
     list_box = AttrMap(
         LineBox(
             ListBox(
                 SimpleListWalker([
-                    text_wgt, blank, blank, btn
+                    text_wgt, blank, btn
                 ])
             )
         ), 'popup'
     )
+
     main_wgt.original_widget = Overlay(
         list_box, main_wgt.original_widget,
         align='center', valign=('relative', 30),
@@ -63,7 +69,7 @@ def popup_message(message, btn_label='продолжить', callback=None):
 def button(label, callback=None, user_data=None, size=40):
     return Padding(
         AttrMap(
-            Button(label, on_press=callback, user_data=user_data), 'btn', focus_map='focused'
+            Button(label.upper(), on_press=callback, user_data=user_data), 'btn', focus_map='focused'
         ),
         width=size, align='center'
     )
@@ -71,6 +77,7 @@ def button(label, callback=None, user_data=None, size=40):
 
 def chkbox_selected(*kargs):
     sel_chkbox, state = kargs
+    seo_urwid.data_for_request['search_engine'] = search_engines[sel_chkbox.label]
     if state:
         for chkbox in engine.base_widget.contents:
             if chkbox[0].base_widget is not sel_chkbox:
@@ -79,27 +86,52 @@ def chkbox_selected(*kargs):
 
 def exit_program(key):
     if key == 'f8' or isinstance(key, Button):
+        try:
+            seo_urwid.exit_prog()
+        except Exception as e:
+            print_msg(e)
         raise ExitMainLoop()
 
 
-def show_visited_links():
-    pass
-
-
 def start_browsing():
-    import time
-    time.sleep(2)
-    popup_message(message='Ссылка на сайт найдена')
-
-    msg_wgt.base_widget.set_text('bla-bla-bla')
+    try:
+        seo_urwid.browser_init()
+        seo_urwid.find_website_link()
+        popup_message('Ссылка на сайт найдена\nНажми кнопку для перехода на сайт', callback=continue_browsing)
+    except Exception as e:
+        print_msg(e)
 
 
 def browsing_active_page():
-    _css = css_path.base_widget.edit_text
-    _xpath = xpath.base_widget.edit_text
-    _links_num = links_num.base_widget.edit_text
+    try:
+        seo_urwid.start_links_click()
+    except Exception as e:
+        print_msg(e)
+    finally:
+        seo_urwid.write_visited_links(mode='a')
 
-    msg_wgt.base_widget.set_text(str(datetime.datetime.now()))
+
+def continue_browsing():
+    try:
+        seo_urwid.continue_browsing()
+    except Exception as e:
+        print_msg(e)
+    finally:
+        seo_urwid.write_visited_links(mode='w')
+
+
+def change_data_for_request(obj, text, key):
+    if key == 'timer':
+        seo_urwid.data_for_request[key] = int(text) if len(text) != 0 else None
+    else:
+        seo_urwid.data_for_request[key] = text.lower()
+
+
+def change_selectors_for_links(obj, text, key):
+    if key == 'num_links_to_click':
+        seo_urwid.selectors_for_links[key] = int(text) if len(text) != 0 else None
+    else:
+        seo_urwid.selectors_for_links[key] = text.lower()
 
 
 blank = Divider()
@@ -112,13 +144,19 @@ website_url = AttrMap(Edit('Адрес сайта: '), '', focus_map='focused')
 
 geolocation = AttrMap(Edit('Местопроложение(только для Яндекса): '), '', focus_map='focused')
 
+css_path = AttrMap(Edit('CSS-PATH элементов: '), '', focus_map='focused')
+
+xpath = AttrWrap(Edit('XPATH элементов: '), '', focus_attr='focused')
+
+links_num = AttrMap(IntEdit('Количество ссылок: '), '', 'focused')
+
 buttons = [
-    button('ПРОСМОТР АДРЕСОВ ПОСЕЩЕННЫХ СТРАНИЦ', lambda x: show_visited_links()),
-    button('НАЧАТЬ ПРОСМОТР С ПОИСКОВИКА', lambda x: start_browsing()),
+    button('ПРОСМОТР АДРЕСОВ ПОСЕЩЕННЫХ СТРАНИЦ', lambda x: seo_urwid.print_visited_links()),
+    button('поиск заданного сайта', lambda x: start_browsing()),
     button('ВЫХОД', exit_program)
 ]
 
-engine = LineBox(
+engine = AttrMap(LineBox(
     BoxAdapter(
         Filler(
             Pile([
@@ -128,7 +166,7 @@ engine = LineBox(
             ]),
             top=1, bottom=1),
         height=len(search_engines) + 2),
-    title='Поисковик')
+    title='Поисковик'.upper(), title_attr='important'), 'important')
 
 msg_wgt = LineBox(
     BoxAdapter(Filler(Text(''), 'top'), height=12),
@@ -146,22 +184,32 @@ btns_pile = LineBox(
 data_search_pile = LineBox(
     BoxAdapter(
         Filler(
-            MyPile([timer, phrase, website_url, geolocation]),
+            MyPile([phrase, website_url, geolocation]),
             top=1, bottom=1),
-        height=6),
+        height=3),
     title='Данные для поиска')
 
 cols = Columns([(30, engine), btns_pile], 1)
 
-css_path = AttrMap(Edit('CSS-PATH элементов: '), '', focus_map='focused')
-xpath = AttrWrap(Edit('XPATH элементов: '), '', focus_attr='focused')
-links_num = AttrMap(IntEdit('Количество ссылок: '), '', 'focused')
+##################################################################################################
+# Signals                                                                                       ##
+##################################################################################################
 
-active_page_wgt = LineBox(
+connect_signal(timer.base_widget, 'change', change_data_for_request, user_arg='timer')
+connect_signal(phrase.base_widget, 'change', change_data_for_request, user_arg='phrase')
+connect_signal(website_url.base_widget, 'change', change_data_for_request, user_arg='website_url')
+connect_signal(geolocation.base_widget, 'change', change_data_for_request, user_arg='geo_location')
+
+connect_signal(css_path.base_widget, 'change', change_selectors_for_links, 'css_elems')
+connect_signal(xpath.base_widget, 'change', change_selectors_for_links, 'xpath_elems')
+connect_signal(links_num.base_widget, 'change', change_selectors_for_links, 'num_links_to_click')
+##################################################################################################
+
+selectors_wgt = LineBox(
     BoxAdapter(
         Filler(
             MyPile([css_path, xpath, links_num, timer, blank,
-                    button('ПРОСМОТР ССЫЛОК НА АКТИВНОЙ СТРАНИЦЕ', browsing_active_page)]),
+                    button('ПРОСМОТР ССЫЛОК НА АКТИВНОЙ СТРАНИЦЕ', lambda x: browsing_active_page())]),
             top=1, bottom=1
         ),
         height=6
@@ -171,7 +219,7 @@ active_page_wgt = LineBox(
 
 frame = Frame(
     Padding(
-        ListBox(SimpleListWalker([blank, data_search_pile, cols, active_page_wgt, msg_wgt])),
+        ListBox(SimpleListWalker([blank, data_search_pile, cols, selectors_wgt, msg_wgt])),
         left=2, right=2),
     header=Text('Выполнение заданий с сайтов SEOsprint, ProfitCentr', 'center'))
 

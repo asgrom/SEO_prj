@@ -2,13 +2,15 @@ import os
 from subprocess import Popen
 
 from selenium.common.exceptions import WebDriverException
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.keys import Keys
 
+from seo import YANDEX, GOOGLE
 from seo.google_search import Google
 from seo.yandex_search import Yandex
 from .browser import ErrorExcept, Options
-from selenium.webdriver.common.keys import Keys
-from seo import YANDEX, GOOGLE
-from selenium.webdriver.common.action_chains import ActionChains
+
+from . import urwid_menu
 
 visited_links = list()
 
@@ -31,6 +33,11 @@ selectors_for_links = dict(
     xpath_elems=None,
     num_links_to_click=None
 )
+
+
+def exit_prog():
+    if browser is not None:
+        browser.quit()
 
 
 def find_website_link():
@@ -74,7 +81,7 @@ def continue_browsing():
 
         # сделать новую вкладку активной
         browser.switch_to.window(browser.window_handles[-1])
-        start_links_click()
+        # start_links_click()
 
     except Exception as e:
         raise ErrorExcept(f'ОШИБКА ПЕРЕХОДА ПО ССЫЛКЕ С ПОИСКОВИКА\n{e}')
@@ -106,6 +113,10 @@ def start_links_click():
     """
     # selectors_for_links.clear()
     # selectors_for_links.update(set_selectors_for_website_links())
+    global browser
+    if not browser:
+        browser = Google(options=Options())
+
     num_links = selectors_for_links['num_links_to_click']
 
     browser.timer = data_for_request['timer']
@@ -133,11 +144,22 @@ def start_links_click():
 def print_visited_links():
     try:
         Popen(['gvim', VISITED_LINKS_FILE])
-        with open(VISITED_LINKS_FILE) as f:
-            print(f.read())
     except OSError as e:
-        print(e)
+        raise ErrorExcept(e)
+
+
+def write_visited_links(mode='w'):
+    try:
+        with open(VISITED_LINKS_FILE, mode=mode) as f:
+            for i in visited_links:
+                f.write(f'{i}\n\n')
+    except Exception as e:
+        raise ErrorExcept(e)
+
+
+def main():
+    urwid_menu.main()
 
 
 if __name__ == '__main__':
-    browser_init()
+    main()

@@ -80,12 +80,9 @@ class Browser(Chrome):
                 elem_links = self.find_elements_by_xpath(xpath_elems)
             else:
                 elem_links = self.find_elements_by_css_selector(css_elems)
+            return elem_links
         except WebDriverException as e:
-            print('ОШИБКА!!!\nПО ЗАДАННОМУ СЕЛЕКТОРУ НИЧЕГО НЕ НАЙДЕНО')
-            print(f'CSS-SELECTOR: {css_elems}')
-            print(f'XPATH: {xpath_elems}')
-            print(e)
-        return elem_links
+            raise ErrorExcept('ОШИБКА!!!\nПО ЗАДАННОМУ СЕЛЕКТОРУ НИЧЕГО НЕ НАЙДЕНО')
 
     def find_link_in_search_result(self):
         """
@@ -110,7 +107,7 @@ class Browser(Chrome):
             paginator_next = self.find_element_by_xpath(self.xpath_for_paginator_next)
             paginator_next.click()
         except WebDriverException:
-            print('ДОСТИГЛИ КОНЦА ПОИСКА')
+            # raise ErrorExcept('ДОСТИГЛИ КОНЦА ПОИСКА')
             return None
 
         return self.find_link_in_search_result()
