@@ -1,4 +1,5 @@
 import os
+from subprocess import Popen
 
 from selenium.common.exceptions import WebDriverException
 
@@ -25,6 +26,12 @@ data_for_request = dict(
     geo_location=None
 )
 
+selectors_for_links = dict(
+    css_elems=None,
+    xpath_elems=None,
+    num_links_to_click=None
+)
+
 
 def find_website_link():
     """Поиск сайта и переход на него
@@ -32,6 +39,8 @@ def find_website_link():
     Если ссылка на сайт найдена, переходим на него и делаем вкладку с ним активной.
     Прежде чем перейти на сайт, выводится сообщение и происходит задерка. Это надо для того,
     если по условию задания надо посетить другие сайто до найденого."""
+
+    global required_web_site_element
 
     # устанавливаем местоположение если поисковик яндекс и если задан город местоположения
     if browser.geo_location and browser.search_engine == YANDEX:
@@ -43,6 +52,8 @@ def find_website_link():
     if not link:
         raise ErrorExcept('ССЫЛКИ НА ИСКОМЫЙ САЙТ НЕ НАЙДЕНО')
 
+    required_web_site_element = link
+
     return link
 
 
@@ -51,7 +62,7 @@ def continue_browsing():
 
     try:
         # притормозим просмотр. вдруг по условиям надо просмотреть другие сайты
-        input('ССЫЛКА НА САЙТ НАЙДЕНА\nПРОДОЛЖИТЬ? >>> ')
+        # input('ССЫЛКА НА САЙТ НАЙДЕНА\nПРОДОЛЖИТЬ? >>> ')
         # browser.execute_script(f"arguments[0].scrollIntoView(true);", link)
 
         # прокрутка страницы на начало
@@ -63,6 +74,8 @@ def continue_browsing():
 
         # сделать новую вкладку активной
         browser.switch_to.window(browser.window_handles[-1])
+        start_links_click()
+
     except Exception as e:
         raise ErrorExcept(f'ОШИБКА ПЕРЕХОДА ПО ССЫЛКЕ С ПОИСКОВИКА\n{e}')
 
@@ -83,7 +96,7 @@ def browser_init():
         raise ErrorExcept(f'ОШИБКА В ИНИЦИАЛИЗАЦИИ ДРАЙВЕРА\n{e}')
 
 
-def start_links_click(browser, selectors_for_links):
+def start_links_click():
     """Начинаем поиск и просмотр ссылок на странице
 
     Активируем последнюю вкладку.
@@ -91,33 +104,39 @@ def start_links_click(browser, selectors_for_links):
     Селекторы линков добавляем в словарь data_for_request.
     Добавлена возможность переопределить таймер.
     """
-    selectors_for_links.clear()
-    selectors_for_links.update(set_selectors_for_website_links())
+    # selectors_for_links.clear()
+    # selectors_for_links.update(set_selectors_for_website_links())
     num_links = selectors_for_links['num_links_to_click']
 
-    if selectors_for_links['timer']:
-        browser.timer = selectors_for_links['timer']
-    elif browser.timer is None:
-        browser.timer = get_integer('Необходимо установить таймер:', required=True)
+    browser.timer = data_for_request['timer']
 
     browser.switch_to.window(browser.window_handles[-1])
 
     visited_links.append(browser.current_url)
 
     if num_links > len(browser.get_links_from_website(css_elems=selectors_for_links['css_elems'],
-                                                     xpath_elems=selectors_for_links['xpath_elems'])):
+                                                      xpath_elems=selectors_for_links['xpath_elems'])):
         raise ErrorExcept(f'КОЛИЧЕСТВО НАЙДЕННЫХ ЭЛЕМЕНТОВ НА СТРАНИЦЕ МЕНЬШЕ ТРЕБУЕМОГО')
 
     try:
         for i in range(num_links):
             links = browser.get_links_from_website(css_elems=selectors_for_links['css_elems'],
-                                                  xpath_elems=selectors_for_links['xpath_elems'])
+                                                   xpath_elems=selectors_for_links['xpath_elems'])
             links[i].click()
             browser.page_scrolling()
             visited_links.append(browser.current_url)
             browser.back()
     except WebDriverException as e:
         raise ErrorExcept(f'ОШИБКА!!! ПРИ ПЕРЕХОДЕ ПО ЭЛЕМЕНТАМ НА СТРАНИЦЕ\n{e}')
+
+
+def print_visited_links():
+    try:
+        Popen(['gvim', VISITED_LINKS_FILE])
+        with open(VISITED_LINKS_FILE) as f:
+            print(f.read())
+    except OSError as e:
+        print(e)
 
 
 if __name__ == '__main__':
