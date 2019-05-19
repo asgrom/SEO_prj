@@ -1,4 +1,5 @@
 import os
+import time
 from subprocess import Popen
 
 from selenium.common.exceptions import WebDriverException
@@ -68,16 +69,14 @@ def continue_browsing():
     visited_links.append(f'Ссылка с поисковика:\n{required_web_site_element.get_attribute("href")}')
 
     try:
-        # притормозим просмотр. вдруг по условиям надо просмотреть другие сайты
-        # input('ССЫЛКА НА САЙТ НАЙДЕНА\nПРОДОЛЖИТЬ? >>> ')
-        # browser.execute_script(f"arguments[0].scrollIntoView(true);", link)
-
         # прокрутка страницы на начало
         # browser.execute_script('scrollTo(0,0);')
         required_web_site_element.send_keys(Keys.HOME)
-
+        time.sleep(.5)
         # перейти к искомому элементу
-        ActionChains(browser).move_to_element(required_web_site_element).click(required_web_site_element).perform()
+        actChains = ActionChains(browser)
+        actChains.move_to_element(required_web_site_element).perform()
+        actChains.click(required_web_site_element).perform()
 
         # сделать новую вкладку активной
         browser.switch_to.window(browser.window_handles[-1])
@@ -111,8 +110,6 @@ def start_links_click():
     Селекторы линков добавляем в словарь data_for_request.
     Добавлена возможность переопределить таймер.
     """
-    # selectors_for_links.clear()
-    # selectors_for_links.update(set_selectors_for_website_links())
     global browser
     if not browser:
         browser = Google(options=Options())
@@ -127,6 +124,7 @@ def start_links_click():
 
     if num_links > len(browser.get_links_from_website(css_elems=selectors_for_links['css_elems'],
                                                       xpath_elems=selectors_for_links['xpath_elems'])):
+        # print(browser.get_links_from_website(selectors_for_links['css_elems', selectors_for_links['xpath_elems']]))
         raise ErrorExcept(f'КОЛИЧЕСТВО НАЙДЕННЫХ ЭЛЕМЕНТОВ НА СТРАНИЦЕ МЕНЬШЕ ТРЕБУЕМОГО')
 
     try:

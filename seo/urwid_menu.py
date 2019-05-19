@@ -4,6 +4,7 @@
 
 from urwid import *
 from seo import seo_urwid
+from urwid_timed_progress import TimedProgressBar, FancyProgressBar
 
 __VERSION__ = '0.2'
 
@@ -17,7 +18,9 @@ palette = [
     ('focused', 'white', 'dark blue'),
     ('btn', 'black', 'light gray'),
     ('popup', 'black', 'light gray'),
-    ('important', 'light red,bold', '')
+    ('important', 'light red,bold', ''),
+    ('normal', 'white', 'black'),
+    ('complete', 'white', 'dark magenta')
 ]
 
 
@@ -134,6 +137,10 @@ def change_selectors_for_links(obj, text, key):
         seo_urwid.selectors_for_links[key] = text.lower()
 
 
+def attr_wrap(obj):
+    return AttrMap(obj, '', focus_map='focused')
+
+
 blank = Divider()
 
 timer = AttrMap(IntEdit('Таймер: '), '', focus_map='focused')
@@ -156,38 +163,31 @@ buttons = [
     button('ВЫХОД', exit_program)
 ]
 
-engine = AttrMap(LineBox(
-    BoxAdapter(
-        Filler(
+engine = AttrMap(
+    LineBox(
+        Padding(
             Pile([
-                AttrMap(CheckBox(label, on_state_change=chkbox_selected),
-                        '', focus_map='focused')
-                for label in search_engines
-            ]),
-            top=1, bottom=1),
-        height=len(search_engines) + 2),
-    title='Поисковик'.upper(), title_attr='important'), 'important')
+                  *[attr_wrap(CheckBox(label, on_state_change=chkbox_selected))
+                    for label in search_engines],
+                  ]), left=1, right=1
+        ), title='ПОИСКОВИК', title_attr='important'
+    ), 'important')
 
 msg_wgt = LineBox(
     BoxAdapter(Filler(Text(''), 'top'), height=12),
     title='Сообщения скрипта')
 
 btns_pile = LineBox(
-    BoxAdapter(
-        Filler(
-            Pile(buttons),
-            top=1, bottom=1),
-        height=len(buttons) + 2),
-    title='Управление'
+    Pile([*buttons]), title='Управление'
 )
 
 data_search_pile = LineBox(
-    BoxAdapter(
-        Filler(
-            MyPile([phrase, website_url, geolocation]),
-            top=1, bottom=1),
-        height=3),
-    title='Данные для поиска')
+    Padding(
+        Pile(
+            [phrase, website_url, geolocation]
+        ), left=1, right=1
+    ), title='Данные для поиска'
+)
 
 cols = Columns([(30, engine), btns_pile], 1)
 
@@ -205,21 +205,28 @@ connect_signal(xpath.base_widget, 'change', change_selectors_for_links, 'xpath_e
 connect_signal(links_num.base_widget, 'change', change_selectors_for_links, 'num_links_to_click')
 ##################################################################################################
 
-selectors_wgt = LineBox(
-    BoxAdapter(
-        Filler(
-            MyPile([css_path, xpath, links_num, timer, blank,
-                    button('ПРОСМОТР ССЫЛОК НА АКТИВНОЙ СТРАНИЦЕ', lambda x: browsing_active_page())]),
-            top=1, bottom=1
-        ),
-        height=6
-    ),
-    title='Выбор элементов на активной странице'
+
+page_amount_bar = TimedProgressBar('normal', 'complete', units='Page', label='Страницы')
+page_scroll_bar = TimedProgressBar('normal', 'complete', units='Click', label='Прокрутка')
+
+progress_bar_wgt = LineBox(
+    Padding(
+        Pile(
+            [blank, page_scroll_bar, page_amount_bar]
+        ), left=1, right=1),
+    title='Прогресс кликов и прокрутки страниц'
 )
+
+selectors_wgt = LineBox(
+    Padding(
+        MyPile([css_path, xpath, links_num, timer,
+                button('ПРОСМОТР ССЫЛОК НА АКТИВНОЙ СТРАНИЦЕ', lambda x: browsing_active_page())]),
+        left=1, right=1),
+    title='Выбор элементов на активной странице')
 
 frame = Frame(
     Padding(
-        ListBox(SimpleListWalker([blank, data_search_pile, cols, selectors_wgt, msg_wgt])),
+        ListBox(SimpleListWalker([blank, data_search_pile, cols, selectors_wgt, progress_bar_wgt, msg_wgt])),
         left=2, right=2),
     header=Text('Выполнение заданий с сайтов SEOsprint, ProfitCentr', 'center'))
 

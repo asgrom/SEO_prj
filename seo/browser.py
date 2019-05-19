@@ -95,11 +95,11 @@ class Browser(Chrome):
             # поиск всех ссылок на странице выдачи
             found_links = self.find_elements_by_xpath(self.xpath_for_links_on_search_page)
         except WebDriverException:
-            print('ОШИБКА ПОИСКА ССЫЛОК В ВЫДАЧЕ')
-            return None
+            raise  ErrorExcept('ОШИБКА ПОИСКА ССЫЛОК В ВЫДАЧЕ')
 
         for link in found_links:
-            if re.search(self.website_url, link.get_attribute('href')):
+            # if re.search(self.website_url, link.get_attribute('href')):
+            if re.search(self.website_url, link.find_element_by_xpath('./b').text, flags=re.IGNORECASE):
                 return link
 
         try:
