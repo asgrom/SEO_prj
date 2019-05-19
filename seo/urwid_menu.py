@@ -3,8 +3,10 @@
 #
 
 from urwid import *
+from urwid_timed_progress import TimedProgressBar
+
+from seo import progress_signal, scroll_done_signal, pages_amount_signal, all_pages_clicked_signal
 from seo import seo_urwid
-from urwid_timed_progress import TimedProgressBar, FancyProgressBar
 
 __VERSION__ = '0.2'
 
@@ -141,6 +143,30 @@ def attr_wrap(obj):
     return AttrMap(obj, '', focus_map='focused')
 
 
+@progress_signal.connect
+def update_page_scroll_bar(sender, done):
+    page_scroll_bar.add_progress(1, done=done)
+    loop.draw_screen()
+
+
+@scroll_done_signal.connect
+def reset_page_scroll_bar(sender):
+    page_scroll_bar.reset()
+    loop.draw_screen()
+
+
+@pages_amount_signal.connect
+def update_page_amount_bar(sender, done):
+    page_amount_bar.add_progress(1, done=done)
+    loop.draw_screen()
+
+
+@all_pages_clicked_signal.connect
+def reset_page_amount_bar(sender):
+    page_amount_bar.reset()
+    loop.draw_screen()
+
+
 blank = Divider()
 
 timer = AttrMap(IntEdit('Таймер: '), '', focus_map='focused')
@@ -167,9 +193,9 @@ engine = AttrMap(
     LineBox(
         Padding(
             Pile([
-                  *[attr_wrap(CheckBox(label, on_state_change=chkbox_selected))
-                    for label in search_engines],
-                  ]), left=1, right=1
+                *[attr_wrap(CheckBox(label, on_state_change=chkbox_selected))
+                  for label in search_engines],
+            ]), left=1, right=1
         ), title='ПОИСКОВИК', title_attr='important'
     ), 'important')
 
@@ -238,9 +264,11 @@ main_wgt = WidgetPlaceholder(
         width=('relative', 50), height=('relative', 90),
         min_width=100, min_height=50))
 
+loop = MainLoop(main_wgt, palette=palette, unhandled_input=exit_program)
+
 
 def main():
-    MainLoop(main_wgt, palette=palette, unhandled_input=exit_program, pop_ups=True).run()
+    loop.run()
 
 
 if __name__ == '__main__':

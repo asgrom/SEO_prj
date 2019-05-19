@@ -7,11 +7,11 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
 
 from seo import YANDEX, GOOGLE
+from seo import all_pages_clicked_signal, pages_amount_signal
 from seo.google_search import Google
 from seo.yandex_search import Yandex
-from .browser import ErrorExcept, Options
-
 from . import urwid_menu
+from .browser import ErrorExcept, Options
 
 visited_links = list()
 
@@ -80,7 +80,6 @@ def continue_browsing():
 
         # сделать новую вкладку активной
         browser.switch_to.window(browser.window_handles[-1])
-        # start_links_click()
 
     except Exception as e:
         raise ErrorExcept(f'ОШИБКА ПЕРЕХОДА ПО ССЫЛКЕ С ПОИСКОВИКА\n{e}')
@@ -132,9 +131,13 @@ def start_links_click():
             links = browser.get_links_from_website(css_elems=selectors_for_links['css_elems'],
                                                    xpath_elems=selectors_for_links['xpath_elems'])
             links[i].click()
-            browser.page_scrolling()
+
+            browser.page_scrolling_with_urwid_progress_bar()
+            pages_amount_signal.send(start_links_click, done=num_links)
+
             visited_links.append(browser.current_url)
             browser.back()
+        all_pages_clicked_signal.send(start_links_click)
     except WebDriverException as e:
         raise ErrorExcept(f'ОШИБКА!!! ПРИ ПЕРЕХОДЕ ПО ЭЛЕМЕНТАМ НА СТРАНИЦЕ\n{e}')
 

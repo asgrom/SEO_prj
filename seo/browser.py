@@ -7,6 +7,8 @@ from selenium.webdriver import Chrome, ChromeOptions
 from selenium.webdriver.common.keys import Keys
 from tqdm import tqdm
 
+from seo import progress_signal, scroll_done_signal
+
 
 class ErrorExcept(Exception):
     pass
@@ -60,6 +62,17 @@ class Browser(Chrome):
 
         return found_website_link
 
+    def page_scrolling_with_urwid_progress_bar(self):
+        """Прокрутка страницы"""
+        height = self.execute_script('return document.body.scrollHeight;')
+        html = self.find_element_by_tag_name('html')
+        t = 1 / (height / 60 / self.timer)
+        for _ in range(int(height / 60)):
+            html.send_keys(Keys.DOWN)
+            progress_signal.send(self.page_scrolling, done=int(height / 60))
+            sleep(t)
+        scroll_done_signal.send(self.page_scrolling)
+
     def page_scrolling(self):
         """Прокрутка страницы"""
         height = self.execute_script('return document.body.scrollHeight;')
@@ -67,7 +80,10 @@ class Browser(Chrome):
         t = 1 / (height / 60 / self.timer)
         for _ in tqdm(range(int(height / 60)), desc='Прокрутка страницы', unit='click'):
             html.send_keys(Keys.DOWN)
+            progress_signal.send(self.page_scrolling, done=int(height / 60))
             sleep(t)
+        scroll_done_signal.send(self.page_scrolling)
+
 
     def get_links_from_website(self, css_elems=None, xpath_elems=None):
         """Поиск элементов для кликов на странице сайта
@@ -95,7 +111,7 @@ class Browser(Chrome):
             # поиск всех ссылок на странице выдачи
             found_links = self.find_elements_by_xpath(self.xpath_for_links_on_search_page)
         except WebDriverException:
-            raise  ErrorExcept('ОШИБКА ПОИСКА ССЫЛОК В ВЫДАЧЕ')
+            raise ErrorExcept('ОШИБКА ПОИСКА ССЫЛОК В ВЫДАЧЕ')
 
         for link in found_links:
             # if re.search(self.website_url, link.get_attribute('href')):
