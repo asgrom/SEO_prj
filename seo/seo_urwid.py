@@ -144,6 +144,9 @@ def start_links_click():
         loop_end.send(start_links_click)
     except WebDriverException as e:
         raise ErrorExcept(f'ОШИБКА!!! ПРИ ПЕРЕХОДЕ ПО ЭЛЕМЕНТАМ НА СТРАНИЦЕ\n{e}')
+    finally:
+        loop_end.send(start_links_click)
+        signal('scroll-end').send(start_links_click)
 
 
 def print_visited_links():
