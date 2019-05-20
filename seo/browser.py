@@ -2,12 +2,11 @@ import os
 import re
 from time import sleep
 
+from blinker import signal
 from selenium.common.exceptions import WebDriverException
 from selenium.webdriver import Chrome, ChromeOptions
 from selenium.webdriver.common.keys import Keys
 from tqdm import tqdm
-
-from seo import progress_signal, scroll_done_signal
 
 
 class ErrorExcept(Exception):
@@ -36,11 +35,13 @@ class Browser(Chrome):
     xpath_search_field = None
     search_engine = None
 
+    scroll_signal = signal('scroll')
+    scroll_end = signal('scroll-end')
+
     def __init__(self, options=None, **kwargs):
         super().__init__(options=options)
 
         self.timer = kwargs.get('timer', None)
-        # self.search_engine = kwargs.get('search_engine', None)
         self.phrase = kwargs.get('phrase', None)
         self.website_url = kwargs.get('website_url', None)
         self.geo_location = kwargs.get('geo_location', None)
@@ -62,28 +63,25 @@ class Browser(Chrome):
 
         return found_website_link
 
-    def page_scrolling_with_urwid_progress_bar(self):
+    def page_scrolling_with_urwid_progress_bar(self, timer):
         """Прокрутка страницы"""
         height = self.execute_script('return document.body.scrollHeight;')
         html = self.find_element_by_tag_name('html')
-        t = 1 / (height / 60 / self.timer)
+        t = 1 / (height / 60 / timer)
         for _ in range(int(height / 60)):
             html.send_keys(Keys.DOWN)
-            progress_signal.send(self.page_scrolling, done=int(height / 60))
+            self.scroll_signal.send('scroll', done=int(height / 60))
             sleep(t)
-        scroll_done_signal.send(self.page_scrolling)
+        self.scroll_end.send(self)
 
-    def page_scrolling(self):
+    def page_scrolling(self, timer):
         """Прокрутка страницы"""
         height = self.execute_script('return document.body.scrollHeight;')
         html = self.find_element_by_tag_name('html')
-        t = 1 / (height / 60 / self.timer)
+        t = 1 / (height / 60 / timer)
         for _ in tqdm(range(int(height / 60)), desc='Прокрутка страницы', unit='click'):
             html.send_keys(Keys.DOWN)
-            progress_signal.send(self.page_scrolling, done=int(height / 60))
             sleep(t)
-        scroll_done_signal.send(self.page_scrolling)
-
 
     def get_links_from_website(self, css_elems=None, xpath_elems=None):
         """Поиск элементов для кликов на странице сайта

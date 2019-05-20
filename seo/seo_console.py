@@ -1,27 +1,22 @@
+import json
 import os
 import sys
 from pprint import pprint
 from subprocess import Popen
-import json
 
 from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
 
+from seo import VISITED_LINKS_FILE, GOOGLE, YANDEX
 from .browser import Options, ErrorExcept
 from .console_menu import main_menu, get_integer, get_string, search_engine_menu
 from .google_search import Google
 from .yandex_search import Yandex
 
-GOOGLE = 'https://google.ru'
-MAILRU = 'https://mail.ru'
-YANDEX = 'https://yandex.ru'
-
 visited_links = list()
 
 FILE_DATA_FOR_REQUEST = os.path.join(os.environ['HOME'], '.local/share/seo/data_for_request')
-
-VISITED_LINKS_FILE = os.path.join(os.environ['HOME'], 'Документы/seo_visited_links')
 
 
 def set_selectors_for_website_links():
@@ -134,10 +129,10 @@ def start_links_click(driver, selectors_for_links):
     selectors_for_links.update(set_selectors_for_website_links())
     num_links = selectors_for_links['num_links_to_click']
 
-    if selectors_for_links['timer']:
-        driver.timer = selectors_for_links['timer']
-    elif driver.timer is None:
-        driver.timer = get_integer('Необходимо установить таймер:', required=True)
+    if not selectors_for_links['timer']:
+        selectors_for_links['timer'] = get_integer('Необходимо установить таймер:', required=True)
+
+    timer = selectors_for_links['timer']
 
     driver.switch_to.window(driver.window_handles[-1])
 
@@ -152,7 +147,7 @@ def start_links_click(driver, selectors_for_links):
             links = driver.get_links_from_website(css_elems=selectors_for_links['css_elems'],
                                                   xpath_elems=selectors_for_links['xpath_elems'])
             links[i].click()
-            driver.page_scrolling()
+            driver.page_scrolling(timer=timer)
             visited_links.append(driver.current_url)
             driver.back()
     except WebDriverException as e:
@@ -177,6 +172,7 @@ def write_data_for_request(data_dict):
 
 
 def driver_init(driver, data_for_request):
+    """Запуск браузера"""
     try:
         if 'search_engine' not in data_for_request:
             set_search_engine(data_for_request)

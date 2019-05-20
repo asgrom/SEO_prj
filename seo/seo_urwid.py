@@ -1,25 +1,23 @@
-import os
 import time
 from subprocess import Popen
 
+from blinker import signal
 from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
 
+from seo import VISITED_LINKS_FILE
 from seo import YANDEX, GOOGLE
-from seo import all_pages_clicked_signal, pages_amount_signal
 from seo.google_search import Google
 from seo.yandex_search import Yandex
 from . import urwid_menu
 from .browser import ErrorExcept, Options
 
-visited_links = list()
+VisitedLinks = list()
 
-VISITED_LINKS_FILE = os.path.join(os.environ['HOME'], 'Документы/seo_visited_links')
+ChromeDrv = None
 
-browser = None
-
-required_web_site_element = None
+RequiredWebElement = None
 
 data_for_request = dict(
     search_engine=None,
@@ -37,68 +35,76 @@ selectors_for_links = dict(
 
 
 def exit_prog():
-    if browser is not None:
-        browser.quit()
+    if ChromeDrv is not None:
+        ChromeDrv.quit()
 
 
 def find_website_link():
-    """Поиск сайта и переход на него
+    """Поиск ссылки на сайт в поисковике"""
 
-    Если ссылка на сайт найдена, переходим на него и делаем вкладку с ним активной.
-    Прежде чем перейти на сайт, выводится сообщение и происходит задерка. Это надо для того,
-    если по условию задания надо посетить другие сайто до найденого."""
-
-    global required_web_site_element
+    global RequiredWebElement
 
     # устанавливаем местоположение если поисковик яндекс и если задан город местоположения
-    if browser.geo_location and browser.search_engine == YANDEX:
-        browser.change_browser_location()
+    if ChromeDrv.geo_location and ChromeDrv.search_engine == YANDEX:
+        ChromeDrv.change_browser_location()
 
     # ссылка на искомый веб-сайт
-    link = browser.find_website_link()
+    link = ChromeDrv.find_website_link()
 
     if not link:
         raise ErrorExcept('ССЫЛКИ НА ИСКОМЫЙ САЙТ НЕ НАЙДЕНО')
 
-    required_web_site_element = link
+    RequiredWebElement = link
 
     return link
 
 
 def continue_browsing():
-    visited_links.append(f'Ссылка с поисковика:\n{required_web_site_element.get_attribute("href")}')
+    """Переход по найденной ссылке основного сайта
+
+    Прокручивание страницы поиска наверх, переход к ссылке, клик. Переключение на открытую вкладку.
+    """
+    VisitedLinks.append(f'Ссылка с поисковика:\n{RequiredWebElement.get_attribute("href")}')
 
     try:
         # прокрутка страницы на начало
-        # browser.execute_script('scrollTo(0,0);')
-        required_web_site_element.send_keys(Keys.HOME)
+        # ChromeDrv.execute_script('scrollTo(0,0);')
+        RequiredWebElement.send_keys(Keys.HOME)
         time.sleep(.5)
         # перейти к искомому элементу
-        actChains = ActionChains(browser)
-        actChains.move_to_element(required_web_site_element).perform()
-        actChains.click(required_web_site_element).perform()
+        actChains = ActionChains(ChromeDrv)
+        actChains.move_to_element(RequiredWebElement).perform()
+        actChains.click(RequiredWebElement).perform()
 
         # сделать новую вкладку активной
-        browser.switch_to.window(browser.window_handles[-1])
+        ChromeDrv.switch_to.window(ChromeDrv.window_handles[-1])
 
     except Exception as e:
         raise ErrorExcept(f'ОШИБКА ПЕРЕХОДА ПО ССЫЛКЕ С ПОИСКОВИКА\n{e}')
 
 
 def browser_init():
-    global browser
+    """Инициализация браузера
+
+    Если браузер открыт, происходит его закрытие и создается новый экземпляр.
+    """
+    global ChromeDrv
     try:
-        if browser:
-            browser.quit()
+        if ChromeDrv:
+            ChromeDrv.quit()
 
         if data_for_request['search_engine'] == GOOGLE:
-            browser = Google(options=Options(), **data_for_request)
+            ChromeDrv = Google(options=Options(), **data_for_request)
 
         elif data_for_request['search_engine'] == YANDEX:
-            browser = Yandex(options=Options(), **data_for_request)
-
+            ChromeDrv = Yandex(options=Options(), **data_for_request)
+        return ChromeDrv
     except (WebDriverException, Exception) as e:
         raise ErrorExcept(f'ОШИБКА В ИНИЦИАЛИЗАЦИИ ДРАЙВЕРА\n{e}')
+
+
+link_clicked = signal('link-clicked')
+loop_end = signal('loop-end')  # сигнал посылается по окончании кликов по ссылкам
 
 
 def start_links_click():
@@ -106,43 +112,42 @@ def start_links_click():
 
     Активируем последнюю вкладку.
     Посещенные линки добавляем в глобальный список.
-    Селекторы линков добавляем в словарь data_for_request.
-    Добавлена возможность переопределить таймер.
     """
-    global browser
-    if not browser:
-        browser = Google(options=Options())
+    global ChromeDrv
+    if ChromeDrv is None:
+        ChromeDrv = Google(options=Options())
 
     num_links = selectors_for_links['num_links_to_click']
 
-    browser.timer = data_for_request['timer']
+    timer = data_for_request['timer']
 
-    browser.switch_to.window(browser.window_handles[-1])
+    ChromeDrv.switch_to.window(ChromeDrv.window_handles[-1])
 
-    visited_links.append(browser.current_url)
+    VisitedLinks.append(ChromeDrv.current_url)
 
-    if num_links > len(browser.get_links_from_website(css_elems=selectors_for_links['css_elems'],
-                                                      xpath_elems=selectors_for_links['xpath_elems'])):
-        # print(browser.get_links_from_website(selectors_for_links['css_elems', selectors_for_links['xpath_elems']]))
+    if num_links > len(ChromeDrv.get_links_from_website(
+            css_elems=selectors_for_links['css_elems'],
+            xpath_elems=selectors_for_links['xpath_elems'])):
         raise ErrorExcept(f'КОЛИЧЕСТВО НАЙДЕННЫХ ЭЛЕМЕНТОВ НА СТРАНИЦЕ МЕНЬШЕ ТРЕБУЕМОГО')
 
     try:
         for i in range(num_links):
-            links = browser.get_links_from_website(css_elems=selectors_for_links['css_elems'],
-                                                   xpath_elems=selectors_for_links['xpath_elems'])
+            links = ChromeDrv.get_links_from_website(css_elems=selectors_for_links['css_elems'],
+                                                     xpath_elems=selectors_for_links['xpath_elems'])
             links[i].click()
 
-            browser.page_scrolling_with_urwid_progress_bar()
-            pages_amount_signal.send(start_links_click, done=num_links)
+            ChromeDrv.page_scrolling_with_urwid_progress_bar(timer=timer)
+            link_clicked.send(start_links_click, done=num_links)
 
-            visited_links.append(browser.current_url)
-            browser.back()
-        all_pages_clicked_signal.send(start_links_click)
+            VisitedLinks.append(ChromeDrv.current_url)
+            ChromeDrv.back()
+        loop_end.send(start_links_click)
     except WebDriverException as e:
         raise ErrorExcept(f'ОШИБКА!!! ПРИ ПЕРЕХОДЕ ПО ЭЛЕМЕНТАМ НА СТРАНИЦЕ\n{e}')
 
 
 def print_visited_links():
+    """Запускается gvim c файлом посещенных ссылок"""
     try:
         Popen(['gvim', VISITED_LINKS_FILE])
     except OSError as e:
@@ -150,9 +155,13 @@ def print_visited_links():
 
 
 def write_visited_links(mode='w'):
+    """Добавляет запись или перезаписывает файла посещенных ссылок
+
+    Режим открытия файла зависит от аргумента mode: w - запись, a - добавление в конец файла.
+    """
     try:
         with open(VISITED_LINKS_FILE, mode=mode) as f:
-            for i in visited_links:
+            for i in VisitedLinks:
                 f.write(f'{i}\n\n')
     except Exception as e:
         raise ErrorExcept(e)
