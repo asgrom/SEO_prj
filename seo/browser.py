@@ -8,6 +8,8 @@ from selenium.webdriver import Chrome, ChromeOptions
 from selenium.webdriver.common.keys import Keys
 from tqdm import tqdm
 
+from . import GOOGLE, YANDEX
+
 
 class ErrorExcept(Exception):
     pass
@@ -41,7 +43,6 @@ class Browser(Chrome):
     def __init__(self, options=None, **kwargs):
         super().__init__(options=options)
 
-        self.timer = kwargs.get('timer', None)
         self.phrase = kwargs.get('phrase', None)
         self.website_url = kwargs.get('website_url', None)
         self.geo_location = kwargs.get('geo_location', None)
@@ -50,32 +51,32 @@ class Browser(Chrome):
         self.get(self.search_engine)
 
     def find_website_link(self):
-        """Поиск ссылки на искомый сайт на странице выдачи поиска
+        """Поиск ссылки на искомый сайт на странице выдачи поиска"""
 
-        :return: ссылка на искомый сайт
-        """
-        search_field = self.find_element_by_xpath(self.xpath_search_field)
+        try:
+            search_field = self.find_element_by_xpath(self.xpath_search_field)
+        except WebDriverException as e:
+            raise ErrorExcept(e)
         search_field.clear()
         search_field.send_keys(self.phrase)
         search_field.send_keys(Keys.RETURN)
-
-        found_website_link = self.find_link_in_search_result()
-
-        return found_website_link
+        return self.find_link_in_search_result()
 
     def page_scrolling_with_urwid_progress_bar(self, timer):
         """Прокрутка страницы"""
+
         height = self.execute_script('return document.body.scrollHeight;')
         html = self.find_element_by_tag_name('html')
-        t = 1 / (height / 60 / timer)
-        for _ in range(int(height / 60)):
+        t = 30 * timer / height
+        for _ in range(int(height / 40)):
             html.send_keys(Keys.DOWN)
-            self.scroll_signal.send('scroll', done=int(height / 60))
+            self.scroll_signal.send('scroll', done=int(height / 40))
             sleep(t)
         self.scroll_end.send(self)
 
     def page_scrolling(self, timer):
         """Прокрутка страницы"""
+
         height = self.execute_script('return document.body.scrollHeight;')
         html = self.find_element_by_tag_name('html')
         t = 1 / (height / 60 / timer)
@@ -88,7 +89,6 @@ class Browser(Chrome):
 
         :return: список элементов, содержащих ссылку для клика
         """
-        elem_links = None
         try:
             if not css_elems:
                 elem_links = self.find_elements_by_xpath(xpath_elems)
@@ -102,8 +102,7 @@ class Browser(Chrome):
         """
         Рекурсивный поиск ссылки на искомый сайт на странице выдачи
 
-        :return: ссылку на искомый сайт
-        """
+        :return: ссылку на искомый сайт"""
 
         try:
             # поиск всех ссылок на странице выдачи
@@ -112,23 +111,21 @@ class Browser(Chrome):
             raise ErrorExcept('ОШИБКА ПОИСКА ССЫЛОК В ВЫДАЧЕ')
 
         for link in found_links:
-            # if re.search(self.website_url, link.get_attribute('href')):
-            if re.search(self.website_url, link.find_element_by_xpath('./b').text, flags=re.IGNORECASE):
-                return link
+            if self.search_engine == YANDEX:
+                if re.search(self.website_url, link.find_element_by_xpath('./b').text, flags=re.IGNORECASE):
+                    return link
+            elif self.search_engine == GOOGLE:
+                if re.search(self.website_url, link.find_element_by_xpath('.//cite').text, flags=re.IGNORECASE):
+                    return link
 
         try:
             # поиск в пагинаторе кнопки "Следующая"
             paginator_next = self.find_element_by_xpath(self.xpath_for_paginator_next)
             paginator_next.click()
         except WebDriverException:
-            # raise ErrorExcept('ДОСТИГЛИ КОНЦА ПОИСКА')
-            return None
+            raise ErrorExcept('ДОСТИГЛИ КОНЦА ПОИСКА')
 
         return self.find_link_in_search_result()
-
-    def update(self, **kwargs):
-        for k, v in kwargs.items():
-            setattr(self, k, v)
 
 
 if __name__ == '__main__':
