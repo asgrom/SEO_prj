@@ -1,3 +1,4 @@
+import os
 import time
 from subprocess import Popen
 
@@ -5,11 +6,11 @@ from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
 
-from seo import VISITED_LINKS_FILE
+from seo import VISITED_LINKS_FILE, Chrome_history
 from seo import YANDEX, GOOGLE, MAILRU
 from seo.google_search import Google
-from seo.yandex_search import Yandex
 from seo.mailru_search import MailRu
+from seo.yandex_search import Yandex
 from . import Signals
 from . import urwid_menu
 from .browser import ErrorExcept, Options
@@ -39,6 +40,7 @@ selectors_for_links = dict(
 
 def exit_prog():
     if ChromeDrv is not None:
+        os.remove(Chrome_history)
         ChromeDrv.quit()
 
 

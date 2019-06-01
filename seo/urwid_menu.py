@@ -30,8 +30,8 @@
 from urwid import *
 from urwid_timed_progress import TimedProgressBar
 
-from seo import seo_urwid
 from seo import Signals
+from seo import seo_urwid
 
 __version__ = '0.3'
 
@@ -297,7 +297,7 @@ msg_wgt = Padding(
 
 # виджет кнопок запуска основных операций
 btns_pile = LineBox(
-    Pile([*buttons]), title='Управление'
+    Pile(buttons), title='Управление'
 )
 
 # виджет с полями ввода для поиска сайта

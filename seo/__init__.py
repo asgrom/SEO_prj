@@ -7,6 +7,8 @@ YANDEX = 'https://yandex.ru'
 import os
 
 VISITED_LINKS_FILE = os.path.join(os.environ['HOME'], 'Документы/seo_visited_links')
+Chrome_dir = os.path.join(os.environ["HOME"], ".local/share/seo", "chrome/profile")
+Chrome_history = os.path.join(Chrome_dir, 'Default/History')
 
 from blinker import Signal
 

@@ -1,4 +1,3 @@
-import os
 import re
 from time import sleep
 
@@ -7,6 +6,7 @@ from selenium.webdriver import Chrome, ChromeOptions
 from selenium.webdriver.common.keys import Keys
 from tqdm import tqdm
 
+from seo import Chrome_dir
 from . import GOOGLE, YANDEX, Signals, MAILRU
 
 signals = Signals()
@@ -18,7 +18,7 @@ class ErrorExcept(Exception):
 
 class Options(ChromeOptions):
     opt = [
-        f'user-data-dir={os.path.join(os.environ["HOME"], ".local/share/seo", "chrome/profile")}',
+        f'user-data-dir={Chrome_dir}',
         'disable-infobars',
         'disable-extensions'
     ]
