@@ -1,15 +1,16 @@
 import time
 from subprocess import Popen
 
-from blinker import signal
 from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
 
 from seo import VISITED_LINKS_FILE
-from seo import YANDEX, GOOGLE
+from seo import YANDEX, GOOGLE, MAILRU
 from seo.google_search import Google
 from seo.yandex_search import Yandex
+from seo.mailru_search import MailRu
+from . import Signals
 from . import urwid_menu
 from .browser import ErrorExcept, Options
 
@@ -18,6 +19,8 @@ VisitedLinks = list()
 ChromeDrv = None
 
 RequiredWebElement = None
+
+signals = Signals()
 
 data_for_request = dict(
     search_engine=None,
@@ -98,13 +101,13 @@ def browser_init():
 
         elif data_for_request['search_engine'] == YANDEX:
             ChromeDrv = Yandex(options=Options(), **data_for_request)
+
+        elif data_for_request['search_engine'] == MAILRU:
+            ChromeDrv = MailRu(options=Options(), **data_for_request)
+
         return ChromeDrv
     except (WebDriverException, Exception) as e:
         raise ErrorExcept(f'ОШИБКА В ИНИЦИАЛИЗАЦИИ ДРАЙВЕРА\n{e}')
-
-
-link_clicked = signal('link-clicked')
-loop_end = signal('loop-end')  # сигнал посылается по окончании кликов по ссылкам
 
 
 def start_links_click():
@@ -137,16 +140,14 @@ def start_links_click():
             links[i].click()
 
             ChromeDrv.page_scrolling_with_urwid_progress_bar(timer=timer)
-            link_clicked.send(start_links_click, done=num_links)
+            signals.clicked.send(start_links_click, done=num_links)
 
             VisitedLinks.append(ChromeDrv.current_url)
             ChromeDrv.back()
-        loop_end.send(start_links_click)
     except WebDriverException as e:
         raise ErrorExcept(f'ОШИБКА!!! ПРИ ПЕРЕХОДЕ ПО ЭЛЕМЕНТАМ НА СТРАНИЦЕ\n{e}')
     finally:
-        loop_end.send(start_links_click)
-        signal('scroll-end').send(start_links_click)
+        signals.end.send('loop-end')
 
 
 def print_visited_links():

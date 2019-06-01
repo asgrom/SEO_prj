@@ -2,13 +2,14 @@ import os
 import re
 from time import sleep
 
-from blinker import signal
 from selenium.common.exceptions import WebDriverException
 from selenium.webdriver import Chrome, ChromeOptions
 from selenium.webdriver.common.keys import Keys
 from tqdm import tqdm
 
-from . import GOOGLE, YANDEX
+from . import GOOGLE, YANDEX, Signals, MAILRU
+
+signals = Signals()
 
 
 class ErrorExcept(Exception):
@@ -32,13 +33,14 @@ class Options(ChromeOptions):
 
 
 class Browser(Chrome):
+    # атрибуты определяются в дочерних классах
     xpath_for_links_on_search_page = None
     xpath_for_paginator_next = None
     xpath_search_field = None
     search_engine = None
 
-    scroll_signal = signal('scroll')
-    scroll_end = signal('scroll-end')
+    # css селектор для кнопки следущей страницы в поисковике mail.ru
+    css_for_paginator_next = None
 
     def __init__(self, options=None, **kwargs):
         super().__init__(options=options)
@@ -60,6 +62,7 @@ class Browser(Chrome):
         search_field.clear()
         search_field.send_keys(self.phrase)
         search_field.send_keys(Keys.RETURN)
+        self.switch_to.window(self.window_handles[-1])
         return self.find_link_in_search_result()
 
     def page_scrolling_with_urwid_progress_bar(self, timer):
@@ -67,12 +70,13 @@ class Browser(Chrome):
 
         height = self.execute_script('return document.body.scrollHeight;')
         html = self.find_element_by_tag_name('html')
-        t = 30 * timer / height
+        t = 40 * timer / height
+        # t = 1 / (height / 40 / timer)
         for _ in range(int(height / 40)):
             html.send_keys(Keys.DOWN)
-            self.scroll_signal.send('scroll', done=int(height / 40))
+            signals.scroll.send('scroll', done=int(height / 40))
             sleep(t)
-        self.scroll_end.send(self)
+        signals.end.send(self)
 
     def page_scrolling(self, timer):
         """Прокрутка страницы"""
@@ -112,18 +116,33 @@ class Browser(Chrome):
 
         for link in found_links:
             if self.search_engine == YANDEX:
-                if re.search(self.website_url, link.find_element_by_xpath('./b').text, flags=re.IGNORECASE):
+                if re.search(self.website_url,
+                             link.find_element_by_xpath('./b').text,
+                             flags=re.IGNORECASE):
                     return link
+
             elif self.search_engine == GOOGLE:
-                if re.search(self.website_url, link.find_element_by_xpath('.//cite').text, flags=re.IGNORECASE):
+                if re.search(self.website_url,
+                             link.find_element_by_xpath('.//cite').text,
+                             flags=re.IGNORECASE):
+                    return link
+
+            elif self.search_engine == MAILRU:
+                if re.search(self.website_url,
+                             link.find_element_by_xpath('../../div[@class="block-info-serp"]/span').text,
+                             flags=re.IGNORECASE):
                     return link
 
         try:
             # поиск в пагинаторе кнопки "Следующая"
-            paginator_next = self.find_element_by_xpath(self.xpath_for_paginator_next)
-            paginator_next.click()
-        except WebDriverException:
-            raise ErrorExcept('ДОСТИГЛИ КОНЦА ПОИСКА')
+            if self.search_engine == MAILRU:
+                paginator_next = self.find_element_by_css_selector(self.css_for_paginator_next)
+                paginator_next.click()
+            else:
+                paginator_next = self.find_element_by_xpath(self.xpath_for_paginator_next)
+                paginator_next.click()
+        except WebDriverException as e:
+            raise ErrorExcept(f'ДОСТИГЛИ КОНЦА ПОИСКА\n{e}')
 
         return self.find_link_in_search_result()
 

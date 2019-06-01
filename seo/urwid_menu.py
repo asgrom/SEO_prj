@@ -27,13 +27,13 @@
 Все ошибки программы отображаются в соответствующем виджете.
 """
 
-from blinker import signal
 from urwid import *
 from urwid_timed_progress import TimedProgressBar
 
 from seo import seo_urwid
+from seo import Signals
 
-__VERSION__ = '0.2'
+__version__ = '0.3'
 
 search_engines = dict(
     Yandex='https://yandex.ru',
@@ -47,10 +47,12 @@ palette = [
     ('popup', 'black', 'light gray'),
     ('important', 'light red,bold', ''),
     ('normal', 'white', 'black'),
-    ('complete', 'white', 'dark magenta')
+    ('complete', 'white', 'dark magenta'),
+    ('bg', 'black', 'dark cyan')
 ]
 
-ChromeDrv = None
+signals = Signals()
+
 
 class MyPile(Pile):
     """Обычной класс Pile
@@ -70,14 +72,14 @@ class MyPile(Pile):
 
 def restore_widget():
     """Восстанавливает предыдущий вид основного виджета"""
-
-    main_wgt.original_widget = main_wgt.original_widget[0]
+    main_wgt.original_widget = base_wgt
+    loop.draw_screen()
 
 
 def print_msg(obj):
     """Выводит текст в виджете сообщений в меню"""
-
     msg_wgt.base_widget.set_text(str(obj))
+    loop.draw_screen()
 
 
 def popup_message(message, btn_label='продолжить', callback=None):
@@ -91,6 +93,7 @@ def popup_message(message, btn_label='продолжить', callback=None):
     btn = button(btn_label.upper(), size=len(btn_label) + 4)
 
     connect_signal(btn.base_widget, 'click', lambda x: restore_widget())
+
     if callback is not None:
         connect_signal(btn.base_widget, 'click', lambda x: callback())
 
@@ -144,12 +147,17 @@ def exit_program(key):
         raise ExitMainLoop()
 
 
+def clear_msg_widget():
+    """Очистка виджета сообщений"""
+    msg_wgt.base_widget.set_text('')
+    loop.draw_screen()
+
+
 def start_browsing():
     """Запускает браузер
 
-    Запускается браузер. Происходит поиск ссылки на сайт в поисковике. Если ссылка найдена, появляется сообщение об этом
-    """
-    global ChromeDrv
+    Запускается браузер. Происходит поиск ссылки на сайт в поисковике. Если ссылка найдена, появляется сообщение об этом"""
+    clear_msg_widget()
     try:
         seo_urwid.browser_init()
         seo_urwid.find_website_link()
@@ -160,6 +168,7 @@ def start_browsing():
 
 def browsing_active_page():
     """Поиск элементов на активной вкладке браузера"""
+    clear_msg_widget()
     try:
         seo_urwid.start_links_click()
     except Exception as e:
@@ -206,80 +215,92 @@ def attr_wrap(obj):
     return AttrMap(obj, '', focus_map='focused')
 
 
-# сигналы посылаютя экземпляром Browser
-scroll = signal('scroll')  # сигнал посылает экземпляр класса Brouser при прокрутке страницы
-scroll_end = signal('scroll-end')  # сигнал окончания прокрутки страницы
-
-
-@scroll.connect_via('scroll')
+# обновление прогресс-бара прокрутки страницы
+@signals.scroll.connect
 def update_page_scroll_bar(sender, done):
     page_scroll_bar.add_progress(1, done=done)
     loop.draw_screen()
 
 
-@scroll_end.connect
+# сброс прогресс-бара прокрутки страницы
+@signals.end.connect
 def reset_page_scroll_bar(sender):
     page_scroll_bar.reset()
     loop.draw_screen()
 
 
-# эти два сигнала посылаются из модуля seo_urwid при кликах на ссылках
-link_clicked = signal('link-clicked')  # сигнал посылается при переходе по ссылке
-loop_end = signal('loop-end')  # сигнал посылается после посещения всех ссылок
-
-
-@link_clicked.connect
+# обновление прогресс-бара количества страницы
+@signals.clicked.connect
 def update_page_amount_bar(sender, done):
     page_amount_bar.add_progress(1, done=done)
     loop.draw_screen()
 
 
-@loop_end.connect
+# сброс прогресс-бара количества страниц
+@signals.end.connect_via('loop-end')
 def reset_page_amount_bar(sender):
     page_amount_bar.reset()
     loop.draw_screen()
 
 
+# разделитель "пустая строка"
 blank = Divider()
 
+# таймер для нахождения на страце
 timer = AttrMap(IntEdit('Таймер: '), '', focus_map='focused')
 
+# фраза для поиска сайта
 phrase = AttrMap(Edit('Фраза для поиска: '), '', focus_map='focused')
 
+# адрес сайта, который надо найти
 website_url = AttrMap(Edit('Адрес сайта: '), '', focus_map='focused')
 
+# местоположение для Яндекса
 geolocation = AttrMap(Edit('Местопроложение(только для Яндекса): '), '', focus_map='focused')
 
+# css для элементов на странице
 css_path = AttrMap(Edit('CSS-PATH элементов: '), '', focus_map='focused')
 
+# xpath для элементов на странице
 xpath = AttrWrap(Edit('XPATH элементов: '), '', focus_attr='focused')
 
+# количество ссылок, которое надо кликнуть
 links_num = AttrMap(IntEdit('Количество ссылок: '), '', 'focused')
 
+# список кнопок
 buttons = [
     button('ПРОСМОТР АДРЕСОВ ПОСЕЩЕННЫХ СТРАНИЦ', lambda x: seo_urwid.print_visited_links()),
     button('поиск заданного сайта', lambda x: start_browsing()),
     button('ВЫХОД', exit_program)
 ]
 
+# виждет чек-боксов поисковых систем
 engine = AttrMap(
     LineBox(
         Padding(
-            Pile([
-                *[attr_wrap(CheckBox(label, on_state_change=chkbox_selected))
-                  for label in search_engines],
-            ]), left=1, right=1
+            Pile([attr_wrap(CheckBox(label, on_state_change=chkbox_selected))
+                  for label in search_engines]
+                 ), left=1, right=1
         ), title='ПОИСКОВИК', title_attr='important'
     ), 'important')
 
-msg_wgt = LineBox(
-    BoxAdapter(Filler(Text(''), 'top'), height=12),
-    title='Сообщения скрипта')
+# текстовый виджет с сообщениями сценария
+msg_wgt = Padding(
+    LineBox(
+        BoxAdapter(
+            AttrMap(
+                Filler(
+                    Text(''), 'top'),
+                'bg'),
+            height=7),
+        title='Сообщения скрипта'), left=2, right=2)
 
+# виджет кнопок запуска основных операций
 btns_pile = LineBox(
     Pile([*buttons]), title='Управление'
 )
 
+# виджет с полями ввода для поиска сайта
 data_search_pile = LineBox(
     Padding(
         Pile(
@@ -288,6 +309,7 @@ data_search_pile = LineBox(
     ), title='Данные для поиска'
 )
 
+# виждет колонок, в котором размещены чек-боксы с поисковиками и кнопками
 cols = Columns([(30, engine), btns_pile], 1)
 
 ##################################################################################################
@@ -302,12 +324,16 @@ connect_signal(geolocation.base_widget, 'change', change_data_for_request, user_
 connect_signal(css_path.base_widget, 'change', change_selectors_for_links, 'css_elems')
 connect_signal(xpath.base_widget, 'change', change_selectors_for_links, 'xpath_elems')
 connect_signal(links_num.base_widget, 'change', change_selectors_for_links, 'num_links_to_click')
+
 ##################################################################################################
 
-
+# прогресс-бар с количеством посещенны страниц
 page_amount_bar = TimedProgressBar('normal', 'complete', units='Page', label='Страницы')
+
+# прогресс-бар прокрутки страницы
 page_scroll_bar = TimedProgressBar('normal', 'complete', units='Click', label='Прокрутка')
 
+# виджет, содержащий прогресс-бары
 progress_bar_wgt = LineBox(
     Padding(
         Pile(
@@ -316,6 +342,7 @@ progress_bar_wgt = LineBox(
     title='Прогресс кликов и прокрутки страниц'
 )
 
+# виджет с полями ввода для поиска элементов на странице
 selectors_wgt = LineBox(
     Padding(
         MyPile([css_path, xpath, links_num, timer,
@@ -323,20 +350,31 @@ selectors_wgt = LineBox(
         left=1, right=1),
     title='Выбор элементов на активной странице')
 
+# виджет блокнота
+task_editor = LineBox(
+    BoxAdapter(
+        Padding(
+            Filler(
+                Edit(multiline=True, allow_tab=True),
+                'top'),
+            left=1, right=1),
+        height=14),
+    title='Блокнот'
+)
+
+# основной виджет, на котором расроложены остальные элементы
 frame = Frame(
     Padding(
-        ListBox(SimpleListWalker([blank, data_search_pile, cols, selectors_wgt, progress_bar_wgt, msg_wgt])),
+        ListBox(SimpleListWalker([blank, data_search_pile, cols, selectors_wgt, progress_bar_wgt, task_editor])),
         left=2, right=2),
-    header=Text('Выполнение заданий с сайтов SEOsprint, ProfitCentr', 'center'))
+    header=Text(['Выполнение заданий с сайтов SEOsprint, ProfitCentr\n', ('important', 'F8 ВЫХОД')], 'center'),
+    footer=msg_wgt)
 
-main_wgt = WidgetPlaceholder(
-    Overlay(
-        LineBox(frame),
-        SolidFill('\N{MEDIUM SHADE}'),
-        align='center', valign='middle',
-        width=('relative', 50), height=('relative', 90),
-        min_width=100, min_height=50))
+# topmost(самый верхний) виджет меню
+base_wgt = LineBox(frame)
+main_wgt = WidgetPlaceholder(base_wgt)
 
+# основной цикл urwid
 loop = MainLoop(main_wgt, palette=palette, unhandled_input=exit_program, handle_mouse=False)
 
 
