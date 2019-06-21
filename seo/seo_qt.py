@@ -23,10 +23,11 @@ class StartThread(QThread):
             seo_urwid.start_links_click_qt()
         except Exception as e:
             self.signal.emit(str(e))
+        finally:
+            seo_urwid.write_visited_links(mode='a')
 
 
 class MainWidget(QWidget):
-
     send_error = pyqtSignal(str)
 
     def __init__(self, parent=None):
@@ -89,15 +90,7 @@ class MainWidget(QWidget):
         seo_urwid.selectors_for_links['num_links_to_click'] = self.ui.number_elems_sb.value()
         seo_urwid.selectors_for_links['css_elems'] = self.ui.css_le.text()
         seo_urwid.selectors_for_links['xpath_elems'] = self.ui.xpaath_le.text()
-
         self.thread.start()
-        try:
-            # seo_urwid.start_links_click_qt()
-            pass
-        except Exception as e:
-            self.ui.log_text_browser.setText(str(e))
-        finally:
-            seo_urwid.write_visited_links(mode='a')
 
     @pyqtSlot()
     def search_web_site(self):
