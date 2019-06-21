@@ -11,7 +11,7 @@ from seo import YANDEX, GOOGLE, MAILRU
 from seo.google_search import Google
 from seo.mailru_search import MailRu
 from seo.yandex_search import Yandex
-from . import Signals
+from . import Signals, BlinkerSignals
 from . import urwid_menu
 from .browser import ErrorExcept, Options
 
@@ -39,8 +39,11 @@ selectors_for_links = dict(
 
 
 def exit_prog():
-    if ChromeDrv is not None:
+    try:
         os.remove(Chrome_history)
+    except:
+        pass
+    if ChromeDrv is not None:
         ChromeDrv.quit()
 
 
@@ -150,6 +153,39 @@ def start_links_click():
         raise ErrorExcept(f'ОШИБКА!!! ПРИ ПЕРЕХОДЕ ПО ЭЛЕМЕНТАМ НА СТРАНИЦЕ\n{e}')
     finally:
         signals.end.send('loop-end')
+
+
+def start_links_click_qt():
+    global ChromeDrv
+    if ChromeDrv is None:
+        ChromeDrv = Google(options=Options())
+
+    num_links = selectors_for_links['num_links_to_click']
+
+    timer = data_for_request['timer']
+
+    ChromeDrv.switch_to.window(ChromeDrv.window_handles[-1])
+
+    VisitedLinks.append(ChromeDrv.current_url)
+    if num_links > len(ChromeDrv.get_links_from_website(
+            css_elems=selectors_for_links['css_elems'],
+            xpath_elems=selectors_for_links['xpath_elems'])):
+        raise ErrorExcept(f'КОЛИЧЕСТВО НАЙДЕННЫХ ЭЛЕМЕНТОВ НА СТРАНИЦЕ МЕНЬШЕ ТРЕБУЕМОГО')
+    BlinkerSignals.num_links.send(value=num_links)
+
+    try:
+        for i in range(num_links):
+            links = ChromeDrv.get_links_from_website(css_elems=selectors_for_links['css_elems'],
+                                                     xpath_elems=selectors_for_links['xpath_elems'])
+            links[i].click()
+
+            BlinkerSignals.pages_counter.send(value=i + 1)
+            ChromeDrv.qt_page_scrolling(timer=timer)
+            VisitedLinks.append(ChromeDrv.current_url)
+            ChromeDrv.back()
+        BlinkerSignals.pages_counter.send(value=0)
+    except WebDriverException as e:
+        raise ErrorExcept(f'ОШИБКА!!! ПРИ ПЕРЕХОДЕ ПО ЭЛЕМЕНТАМ НА СТРАНИЦЕ\n{e}')
 
 
 def print_visited_links():

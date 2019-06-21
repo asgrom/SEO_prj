@@ -9,6 +9,8 @@ from tqdm import tqdm
 from seo import Chrome_dir
 from . import GOOGLE, YANDEX, Signals, MAILRU
 
+from seo import BlinkerSignals
+
 signals = Signals()
 
 
@@ -58,7 +60,7 @@ class Browser(Chrome):
         try:
             search_field = self.find_element_by_xpath(self.xpath_search_field)
         except WebDriverException as e:
-            raise ErrorExcept(e)
+            raise ErrorExcept(f'ОШИБКА ПОИСКА ССЫЛКИ НА САЙТ \n{e}')
         search_field.clear()
         search_field.send_keys(self.phrase)
         search_field.send_keys(Keys.RETURN)
@@ -72,9 +74,9 @@ class Browser(Chrome):
         html = self.find_element_by_tag_name('html')
         t = 40 * timer / height
         # t = 1 / (height / 40 / timer)
-        for _ in range(int(height / 40)):
+        for i in range(int(height / 40)):
             html.send_keys(Keys.DOWN)
-            signals.scroll.send('scroll', done=int(height / 40))
+            Signals.scroll.send('scroll', done=int(height / 40))
             sleep(t)
         signals.end.send(self)
 
@@ -84,9 +86,21 @@ class Browser(Chrome):
         height = self.execute_script('return document.body.scrollHeight;')
         html = self.find_element_by_tag_name('html')
         t = 1 / (height / 60 / timer)
-        for _ in tqdm(range(int(height / 60)), desc='Прокрутка страницы', unit='click'):
+        for i in tqdm(range(int(height / 60)), desc='Прокрутка страницы', unit='click'):
             html.send_keys(Keys.DOWN)
             sleep(t)
+
+    def qt_page_scrolling(self, timer):
+        """Прокрутка страницы для Qt"""
+        height = self.execute_script('return document.body.scrollHeight;')
+        html = self.find_element_by_tag_name('html')
+        t = 1 / (height / 40 / timer)
+        BlinkerSignals.max_scrolling.send(value=int(height / 40))
+        for i in range(int(height / 40)):
+            html.send_keys(Keys.DOWN)
+            sleep(t)
+            BlinkerSignals.progress.send(value=i)
+        BlinkerSignals.progress.send(value=0)
 
     def get_links_from_website(self, css_elems=None, xpath_elems=None):
         """Поиск элементов для кликов на странице сайта
