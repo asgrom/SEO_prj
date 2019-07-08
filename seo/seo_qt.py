@@ -1,14 +1,14 @@
 import subprocess
 import sys
 
+from PyQt5 import QtGui
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
-from PyQt5 import QtGui
 
-from .mainwidget import Ui_Form
-from . import seo_urwid
 from . import BlinkerSignals
 from . import VISITED_LINKS_FILE
+from . import seo_urwid
+from .mainwidget import Ui_Form
 
 
 class StartThread(QThread):
@@ -20,6 +20,7 @@ class StartThread(QThread):
 
     def run(self):
         try:
+            self.signal.emit('Запускается поиск по страницам')
             seo_urwid.start_links_click_qt()
         except Exception as e:
             self.signal.emit(str(e))

@@ -6,10 +6,9 @@ from selenium.webdriver import Chrome, ChromeOptions
 from selenium.webdriver.common.keys import Keys
 from tqdm import tqdm
 
+from seo import BlinkerSignals
 from seo import Chrome_dir
 from . import GOOGLE, YANDEX, Signals, MAILRU
-
-from seo import BlinkerSignals
 
 signals = Signals()
 
@@ -99,7 +98,7 @@ class Browser(Chrome):
         for i in range(int(height / 40)):
             html.send_keys(Keys.DOWN)
             sleep(t)
-            BlinkerSignals.progress.send(value=i)
+            BlinkerSignals.progress.send(value=i + 1)
         BlinkerSignals.progress.send(value=0)
 
     def get_links_from_website(self, css_elems=None, xpath_elems=None):
