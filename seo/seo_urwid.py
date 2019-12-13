@@ -91,7 +91,7 @@ def continue_browsing():
         raise ErrorExcept(f'ОШИБКА ПЕРЕХОДА ПО ССЫЛКЕ С ПОИСКОВИКА\n{e}')
 
 
-def browser_init():
+def browser_init(proxy):
     """Инициализация браузера
 
     Если браузер открыт, происходит его закрытие и создается новый экземпляр.
@@ -102,13 +102,13 @@ def browser_init():
             ChromeDrv.quit()
 
         if data_for_request['search_engine'] == GOOGLE:
-            ChromeDrv = Google(options=Options(), **data_for_request)
+            ChromeDrv = Google(options=Options(proxy), **data_for_request)
 
         elif data_for_request['search_engine'] == YANDEX:
-            ChromeDrv = Yandex(options=Options(), **data_for_request)
+            ChromeDrv = Yandex(options=Options(proxy), **data_for_request)
 
         elif data_for_request['search_engine'] == MAILRU:
-            ChromeDrv = MailRu(options=Options(), **data_for_request)
+            ChromeDrv = MailRu(options=Options(proxy), **data_for_request)
 
         return ChromeDrv
     except (WebDriverException, Exception) as e:

@@ -31,7 +31,7 @@ class StartThread(QThread):
 class MainWidget(QWidget):
     send_error = pyqtSignal(str)
 
-    def __init__(self, parent=None):
+    def __init__(self, proxy, parent=None):
         super(MainWidget, self).__init__(parent=parent)
         self.ui = Ui_Form()
         self.ui.setupUi(self)
@@ -39,6 +39,7 @@ class MainWidget(QWidget):
         seo_urwid.data_for_request['search_engine'] = seo_urwid.YANDEX
         self.ui.notepad.setText('Чтобы проскроллить текущую страницу в поле XPATH введи "//body"\n')
         self.thread = StartThread(self.send_error)
+        self.proxy = proxy
 
     def connect_signals(self):
         """Подключение сигналов"""
@@ -102,7 +103,7 @@ class MainWidget(QWidget):
         seo_urwid.data_for_request['website_url'] = self.ui.url_site_le.text()
         try:
             self.setCursor(QtGui.QCursor(Qt.WaitCursor))
-            seo_urwid.browser_init()
+            seo_urwid.browser_init(self.proxy)
             self.unsetCursor()
             seo_urwid.find_website_link()
             msg = QMessageBox()
@@ -128,9 +129,9 @@ class MainWidget(QWidget):
         super(MainWidget, self).closeEvent(event)
 
 
-def main():
+def main(proxy):
     app = QApplication(sys.argv)
-    win = MainWidget()
+    win = MainWidget(proxy=proxy)
     win.show()
     sys.exit(app.exec())
 

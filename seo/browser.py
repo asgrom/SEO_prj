@@ -31,7 +31,7 @@ class Options(ChromeOptions):
         self.add_experimental_option("excludeSwitches", ['enable-automation'])
 
         if proxy is not None:
-            self.arguments.append(f'proxy-server={proxy}')
+            self.arguments.append(f'--proxy-server=http://{proxy}')
 
 
 class Browser(Chrome):
@@ -131,9 +131,9 @@ class Browser(Chrome):
         for link in found_links:
             if self.search_engine == YANDEX:
                 if re.search(self.website_url,
-                             link.find_element_by_xpath('./b').text,
+                             link.find_element_by_xpath('.//div[contains(@class, "path")]/a[1]/b').text,
                              flags=re.IGNORECASE):
-                    return link
+                    return link.find_element_by_xpath('.//h2/a')
 
             elif self.search_engine == GOOGLE:
                 if re.search(self.website_url,
@@ -157,7 +157,7 @@ class Browser(Chrome):
                 paginator_next.click()
         except WebDriverException as e:
             raise ErrorExcept(f'ДОСТИГЛИ КОНЦА ПОИСКА\n{e}')
-
+        sleep(1)
         return self.find_link_in_search_result()
 
 
