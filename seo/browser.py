@@ -28,6 +28,7 @@ class Options(ChromeOptions):
         super().__init__()
 
         self.arguments.extend(self.opt)
+        self.add_experimental_option("excludeSwitches", ['enable-automation'])
 
         if proxy is not None:
             self.arguments.append(f'proxy-server={proxy}')
