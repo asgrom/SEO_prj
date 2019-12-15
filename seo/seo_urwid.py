@@ -41,7 +41,7 @@ selectors_for_links = dict(
 def exit_prog():
     try:
         os.remove(Chrome_history)
-    except:
+    except Exception:
         pass
     if ChromeDrv is not None:
         ChromeDrv.quit()
