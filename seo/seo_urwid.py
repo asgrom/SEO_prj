@@ -38,7 +38,7 @@ selectors_for_links = dict(
 )
 
 
-def exit_prog():
+def close_chrome():
     try:
         os.remove(Chrome_history)
     except Exception:
@@ -99,7 +99,7 @@ def browser_init(proxy):
     global ChromeDrv
     try:
         if ChromeDrv:
-            ChromeDrv.quit()
+            close_chrome()
 
         if data_for_request['search_engine'] == GOOGLE:
             ChromeDrv = Google(options=Options(proxy), **data_for_request)

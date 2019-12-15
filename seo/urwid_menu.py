@@ -141,7 +141,7 @@ def chkbox_selected(*kargs):
 def exit_program(key):
     if key == 'f8' or isinstance(key, Button):
         try:
-            seo_urwid.exit_prog()
+            seo_urwid.close_chrome()
         except Exception as e:
             print_msg(e)
         raise ExitMainLoop()

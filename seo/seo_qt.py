@@ -22,7 +22,6 @@ class StartThread(QThread):
 
     def run(self):
         try:
-            self.signal.emit('Запускается поиск по страницам')
             seo_urwid.start_links_click_qt()
         except Exception as e:
             self.send_error.emit(str(e))
@@ -33,16 +32,17 @@ class StartThread(QThread):
 class SearchWebPage(QThread):
     """Поток поиска ссылки на сайт в поисковой системе"""
 
-    thread_error = pyqtSignal(str, name='threadError')
+    thread_error = pyqtSignal(str)
     done = pyqtSignal()
 
-    def __init__(self, parent=None):
-        super(SearchWebPage, self).__init__(parent)
+    def __init__(self):
+        super(SearchWebPage, self).__init__()
+        self.proxy = None
 
     def run(self) -> None:
-        parent: MainWidget = self.parent()
         try:
-            parent.search_page_link()
+            seo_urwid.browser_init(self.proxy)
+            seo_urwid.find_website_link()
             self.done.emit()
         except Exception as e:
             self.thread_error.emit(str(e))
@@ -57,7 +57,7 @@ class MainWidget(QWidget):
         seo_urwid.data_for_request['search_engine'] = seo_urwid.YANDEX
         self.ui.notepad.setText('Чтобы проскроллить текущую страницу в поле XPATH введи "//body"\n')
         self.page_scrolling_thread = StartThread()
-        self.search_web_page_thread = SearchWebPage(self)
+        self.search_web_page_thread = SearchWebPage()
         self.proxy = proxy
         self.connect_signals()
 
@@ -74,9 +74,9 @@ class MainWidget(QWidget):
         BlinkerSignals.pages_counter.connect(self.increase_pages_counter)
         BlinkerSignals.num_links.connect(self.set_max_pages_counter)
         BlinkerSignals.max_scrolling.connect(self.set_max_scrolling)
-        self.page_scrolling_thread.send_error.connect(self.print_error, Qt.QueuedConnection)
-        self.search_web_page_thread.thread_error.connect(self.print_error, Qt.QueuedConnection)
-        self.search_web_page_thread.done.connect(self.page_link_found, Qt.QueuedConnection)
+        self.page_scrolling_thread.send_error.connect(self.print_error)
+        self.search_web_page_thread.thread_error.connect(self.print_error)
+        self.search_web_page_thread.done.connect(self.page_link_found)
 
     @pyqtSlot(str)
     def print_error(self, err):
@@ -139,21 +139,22 @@ class MainWidget(QWidget):
         seo_urwid.data_for_request['geo_location'] = self.ui.geolocation_le.text()
         seo_urwid.data_for_request['phrase'] = self.ui.phrase_le.text()
         seo_urwid.data_for_request['website_url'] = self.ui.url_site_le.text()
-        self.search_web_page_thread.run()
+        self.search_web_page_thread.proxy = self.proxy
+        self.search_web_page_thread.start()
 
     @pyqtSlot()
     def close_chrome(self):
         """Закрытие веб-движка
 
         Также очищает историю браузера"""
-        seo_urwid.exit_prog()
+        seo_urwid.close_chrome()
 
     def view_saved_links(self, file=None):
         subprocess.Popen(['gvim', file])
 
     def closeEvent(self, event):
         """Перед закрытием будет очищать историю браузера и удалять объект браузера"""
-        seo_urwid.exit_prog()
+        seo_urwid.close_chrome()
         super(MainWidget, self).closeEvent(event)
 
 
@@ -165,4 +166,4 @@ def main(proxy):
 
 
 if __name__ == '__main__':
-    main()
+    pass
