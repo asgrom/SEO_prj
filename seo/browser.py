@@ -19,13 +19,19 @@ class ErrorExcept(Exception):
 
 class Options(ChromeOptions):
     opt = [
-        f'user-data-dir={Chrome_dir}',
         'disable-infobars',
-        'disable-extensions'
+        'anable-extentions'
+        # 'disable-extensions'
     ]
 
-    def __init__(self, proxy=None):
+    def __init__(self, proxy=None, user_dir=True, incognito=False):
         super().__init__()
+
+        if user_dir:
+            self.opt.append(f'user-data-dir={Chrome_dir}')
+
+        if incognito:
+            self.opt.append('--incognito')
 
         self.arguments.extend(self.opt)
         self.add_experimental_option("excludeSwitches", ['enable-automation'])

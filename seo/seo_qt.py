@@ -32,23 +32,14 @@ class StartThread(QThread):
 class SearchWebPage(QThread):
     """Поток поиска ссылки на сайт в поисковой системе"""
 
-    thread_error = pyqtSignal(str)
-    done = pyqtSignal()
-    addon_dlg_signal = pyqtSignal()
+    thread_error = pyqtSignal(str)  # информация об исключении
+    done = pyqtSignal()  # найдена ссылка на сайт
 
     def __init__(self, parent: QObject = None):
         super(SearchWebPage, self).__init__(parent)
-        self.proxy = None
-        self.user_dir = True
-        self.incognito = False
-        self.parent().enable_addons_signal.connect(self.find_website_link)
 
     def run(self) -> None:
-        try:
-            seo_urwid.browser_init(self.proxy, user_dir=self.user_dir, incognito=self.incognito)
-            self.addon_dlg_signal.emit()
-        except Exception as e:
-            self.thread_error.emit(str(e))
+        self.find_website_link()
 
     @pyqtSlot()
     def find_website_link(self):
@@ -60,7 +51,6 @@ class SearchWebPage(QThread):
 
 
 class MainWidget(QWidget):
-    enable_addons_signal = pyqtSignal()
 
     def __init__(self, proxy, user_dir, incognito, parent=None):
         super(MainWidget, self).__init__(parent=parent)
@@ -69,7 +59,7 @@ class MainWidget(QWidget):
         seo_urwid.data_for_request['search_engine'] = seo_urwid.YANDEX
         self.ui.notepad.setText('Чтобы проскроллить текущую страницу в поле XPATH введи "//body"\n')
         self.page_scrolling_thread = StartThread()
-        self.search_web_page_thread = SearchWebPage(self)
+        self.search_web_page_thread = SearchWebPage()
         self.proxy = proxy
         self.user_dir = user_dir
         self.incognito = incognito
@@ -91,7 +81,6 @@ class MainWidget(QWidget):
         self.page_scrolling_thread.send_error.connect(self.print_error)
         self.search_web_page_thread.thread_error.connect(self.print_error)
         self.search_web_page_thread.done.connect(self.page_link_found)
-        self.search_web_page_thread.addon_dlg_signal.connect(self.enable_addons_dialog)
 
     @pyqtSlot(str)
     def print_error(self, err):
@@ -155,9 +144,12 @@ class MainWidget(QWidget):
         seo_urwid.data_for_request['geo_location'] = self.ui.geolocation_le.text()
         seo_urwid.data_for_request['phrase'] = self.ui.phrase_le.text()
         seo_urwid.data_for_request['website_url'] = self.ui.url_site_le.text()
-        self.search_web_page_thread.proxy = self.proxy
-        self.search_web_page_thread.user_dir = self.user_dir
-        self.search_web_page_thread.incognito = self.incognito
+        try:
+            seo_urwid.browser_init(self.proxy, self.user_dir, self.incognito)
+        except Exception as e:
+            self.print_error(e)
+            return
+        self.enable_addons_dialog()
         self.search_web_page_thread.start()
 
     @pyqtSlot()
@@ -181,7 +173,6 @@ class MainWidget(QWidget):
                                 'Перед продолжением включить addons в браузере или задать '
                                 'город в геолокации',
                                 buttons=QMessageBox.Ok, defaultButton=QMessageBox.Ok)
-        self.enable_addons_signal.emit()
 
 
 def main(proxy, user_dir, incognito):
