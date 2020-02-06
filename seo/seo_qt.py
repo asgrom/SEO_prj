@@ -141,9 +141,9 @@ class MainWidget(QWidget):
     def search_site_btn_clicked(self):
         """Нажата кнопка поиска сайта в поисковаой системе"""
         self.ui.log_text_browser.clear()
-        seo_urwid.data_for_request['geo_location'] = self.ui.geolocation_le.text()
-        seo_urwid.data_for_request['phrase'] = self.ui.phrase_le.text()
-        seo_urwid.data_for_request['website_url'] = self.ui.url_site_le.text()
+        seo_urwid.data_for_request['geo_location'] = self.ui.geolocation_le.text().strip()
+        seo_urwid.data_for_request['phrase'] = self.ui.phrase_le.text().strip()
+        seo_urwid.data_for_request['website_url'] = self.ui.url_site_le.text().strip()
         try:
             seo_urwid.browser_init(self.proxy, self.user_dir, self.incognito)
         except Exception as e:
