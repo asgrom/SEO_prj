@@ -100,6 +100,7 @@ class Browser(Chrome):
         """Прокрутка страницы для Qt"""
         height = self.execute_script('return document.body.scrollHeight;')
         html = self.find_element_by_tag_name('html')
+        html.send_keys(Keys.HOME)
         t = 1 / (height / 40 / timer)
         BlinkerSignals.max_scrolling.send(value=int(height / 40))
         for i in range(int(height / 40)):

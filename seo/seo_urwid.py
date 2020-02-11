@@ -63,6 +63,8 @@ def find_website_link():
         raise ErrorExcept('ССЫЛКИ НА ИСКОМЫЙ САЙТ НЕ НАЙДЕНО')
 
     RequiredWebElement = link
+    VisitedLinks.append(f'URL поисковика\n{ChromeDrv.current_url}')
+    write_visited_links(mode='a')
 
     return link
 
@@ -72,7 +74,7 @@ def continue_browsing():
 
     Прокручивание страницы поиска наверх, переход к ссылке, клик. Переключение на открытую вкладку.
     """
-    VisitedLinks.append(f'Ссылка с поисковика:\n{RequiredWebElement.get_attribute("href")}')
+    # VisitedLinks.append(f'Ссылка с поисковика:\n{RequiredWebElement.get_attribute("href")}')
 
     try:
         # прокрутка страницы на начало
@@ -86,6 +88,8 @@ def continue_browsing():
 
         # сделать новую вкладку активной
         ChromeDrv.switch_to.window(ChromeDrv.window_handles[-1])
+        VisitedLinks.append(f'URL страницы, на которую перешли с поисковика\n{ChromeDrv.current_url}')
+        write_visited_links(mode='a')
 
     except Exception as e:
         raise ErrorExcept(f'ОШИБКА ПЕРЕХОДА ПО ССЫЛКЕ С ПОИСКОВИКА\n{e}')
@@ -158,10 +162,17 @@ def start_links_click():
         signals.end.send('loop-end')
 
 
+def scroll_current_page(timer):
+    ChromeDrv.switch_to.window(ChromeDrv.window_handles[-1])
+    VisitedLinks.append(ChromeDrv.current_url)
+    ChromeDrv.qt_page_scrolling(timer=timer)
+    write_visited_links(mode='a')
+
+
 def start_links_click_qt():
     global ChromeDrv
-    if ChromeDrv is None:
-        ChromeDrv = Google(options=Options())
+    # if ChromeDrv is None:
+    #     ChromeDrv = Google(options=Options())
 
     num_links = selectors_for_links['num_links_to_click']
 
@@ -169,7 +180,7 @@ def start_links_click_qt():
 
     ChromeDrv.switch_to.window(ChromeDrv.window_handles[-1])
 
-    VisitedLinks.append(ChromeDrv.current_url)
+    VisitedLinks.append(f'Адреса посещенных ссылок\n{ChromeDrv.current_url}')
     if num_links > len(ChromeDrv.get_links_from_website(
             css_elems=selectors_for_links['css_elems'],
             xpath_elems=selectors_for_links['xpath_elems'])):
@@ -186,6 +197,7 @@ def start_links_click_qt():
             ChromeDrv.qt_page_scrolling(timer=timer)
             VisitedLinks.append(ChromeDrv.current_url)
             ChromeDrv.back()
+            time.sleep(2)
         BlinkerSignals.pages_counter.send(value=0)
     except WebDriverException as e:
         raise ErrorExcept(f'ОШИБКА!!! ПРИ ПЕРЕХОДЕ ПО ЭЛЕМЕНТАМ НА СТРАНИЦЕ\n{e}')
@@ -204,6 +216,8 @@ def write_visited_links(mode='w'):
 
     Режим открытия файла зависит от аргумента mode: w - запись, a - добавление в конец файла.
     """
+    if not VisitedLinks:
+        return
     try:
         with open(VISITED_LINKS_FILE, mode=mode) as f:
             print(time.strftime('%d-%m-%Y %H:%M:%S', time.localtime()), file=f)

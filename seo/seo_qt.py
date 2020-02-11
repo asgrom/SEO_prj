@@ -11,6 +11,23 @@ from . import seo_urwid
 from .mainwidget import Ui_Form
 
 
+class ScrollCurrentPageThread(QThread):
+    """Прокрутка текущей страницы"""
+    done = pyqtSignal()
+    send_error = pyqtSignal(str)
+
+    def __init__(self, parent=None):
+        super(ScrollCurrentPageThread, self).__init__(parent)
+        self.timer = None
+
+    def run(self) -> None:
+        try:
+            seo_urwid.scroll_current_page(self.timer)
+            self.done.emit()
+        except Exception as e:
+            self.send_error.emit(str(e))
+
+
 class StartThread(QThread):
     """Запуск просмотра страниц в отдельном потоке"""
 
@@ -60,6 +77,7 @@ class MainWidget(QWidget):
         self.ui.notepad.setText('Чтобы проскроллить текущую страницу в поле XPATH введи "//body"\n')
         self.page_scrolling_thread = StartThread()
         self.search_web_page_thread = SearchWebPage()
+        self.scroll_current_page_thread = ScrollCurrentPageThread()
         self.proxy = proxy
         self.user_dir = user_dir
         self.incognito = incognito
@@ -75,12 +93,15 @@ class MainWidget(QWidget):
         self.ui.yandex_rbtn.clicked.connect(lambda: self.rbt_status_changed(seo_urwid.YANDEX))
         self.ui.google_rbtn.clicked.connect(lambda: self.rbt_status_changed(seo_urwid.GOOGLE))
         self.ui.mailr_rbtn.clicked.connect(lambda: self.rbt_status_changed(seo_urwid.MAILRU))
+        self.ui.scrollCurrentPageBtn.clicked.connect(self.scroll_current_page)
         BlinkerSignals.progress.connect(self.increase_progress_bar)
         BlinkerSignals.pages_counter.connect(self.increase_pages_counter)
         BlinkerSignals.num_links.connect(self.set_max_pages_counter)
         BlinkerSignals.max_scrolling.connect(self.set_max_scrolling)
         self.page_scrolling_thread.send_error.connect(self.print_error)
         self.search_web_page_thread.thread_error.connect(self.print_error)
+        self.scroll_current_page_thread.send_error.connect(self.print_error)
+        self.scroll_current_page_thread.done.connect(self.done_msg_dlg)
         self.search_web_page_thread.done.connect(self.page_link_found)
 
     @pyqtSlot(str)
@@ -121,10 +142,12 @@ class MainWidget(QWidget):
         seo_urwid.selectors_for_links['xpath_elems'] = self.ui.xpaath_le.text()
         self.page_scrolling_thread.start()
 
-    def search_page_link(self):
-        """Поиск веб сайта в поисковаой системе"""
-        seo_urwid.browser_init(self.proxy, self.user_dir, incognito=self.incognito)
-        return seo_urwid.find_website_link()
+    @pyqtSlot()
+    def scroll_current_page(self):
+        """Прокрутка текущей страницы"""
+        self.ui.log_text_browser.clear()
+        self.scroll_current_page_thread.timer = self.ui.timer_sb.value()
+        self.scroll_current_page_thread.start()
 
     @pyqtSlot()
     def page_link_found(self):
@@ -167,6 +190,11 @@ class MainWidget(QWidget):
         """Перед закрытием будет очищать историю браузера и удалять объект браузера"""
         seo_urwid.close_chrome()
         super(MainWidget, self).closeEvent(event)
+
+    @pyqtSlot()
+    def done_msg_dlg(self):
+        QMessageBox.information(self, 'All done!', 'All done!',
+                                buttons=QMessageBox.Ok, defaultButton=QMessageBox.Ok)
 
     @pyqtSlot()
     def enable_addons_dialog(self):
