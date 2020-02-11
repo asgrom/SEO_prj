@@ -206,8 +206,12 @@ def write_visited_links(mode='w'):
     """
     try:
         with open(VISITED_LINKS_FILE, mode=mode) as f:
+            print(time.strftime('%d-%m-%Y %H:%M:%S', time.localtime()), file=f)
             for i in VisitedLinks:
-                f.write(f'{i}\n\n')
+                f.write(f'{i}\n')
+            print(file=f)
+        VisitedLinks.clear()
+
     except Exception as e:
         raise ErrorExcept(e)
 
