@@ -1,7 +1,6 @@
 import subprocess
 import sys
 
-from PyQt5 import QtGui
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
@@ -11,10 +10,16 @@ from . import seo_urwid
 from .mainwidget import Ui_Form
 
 
-class ScrollCurrentPageThread(QThread):
-    """Прокрутка текущей страницы"""
+class QtSignals(QObject):
     done = pyqtSignal()
     send_error = pyqtSignal(str)
+
+
+Signals = QtSignals()
+
+
+class ScrollCurrentPageThread(QThread):
+    """Прокрутка текущей страницы"""
 
     def __init__(self, parent=None):
         super(ScrollCurrentPageThread, self).__init__(parent)
@@ -23,34 +28,32 @@ class ScrollCurrentPageThread(QThread):
     def run(self) -> None:
         try:
             seo_urwid.scroll_current_page(self.timer)
-            self.done.emit()
+            Signals.done.emit()
         except Exception as e:
-            self.send_error.emit(str(e))
+            Signals.send_error.emit(str(e))
 
 
-class StartThread(QThread):
+class ClickLinksThread(QThread):
     """Запуск просмотра страниц в отдельном потоке"""
 
-    send_error = pyqtSignal(str)
-
     def __init__(self):
-        super(StartThread, self).__init__()
+        super(ClickLinksThread, self).__init__()
         self.running = False
 
     def run(self):
         try:
             seo_urwid.start_links_click_qt()
         except Exception as e:
-            self.send_error.emit(str(e))
+            Signals.send_error.emit(str(e))
         finally:
             seo_urwid.write_visited_links(mode='a')
+        Signals.done.emit()
 
 
 class SearchWebPage(QThread):
     """Поток поиска ссылки на сайт в поисковой системе"""
 
-    thread_error = pyqtSignal(str)  # информация об исключении
-    done = pyqtSignal()  # найдена ссылка на сайт
+    page_found = pyqtSignal()  # найдена ссылка на сайт
 
     def __init__(self, parent: QObject = None):
         super(SearchWebPage, self).__init__(parent)
@@ -62,9 +65,9 @@ class SearchWebPage(QThread):
     def find_website_link(self):
         try:
             seo_urwid.find_website_link()
-            self.done.emit()
+            self.page_found.emit()
         except Exception as e:
-            self.thread_error.emit(str(e))
+            Signals.send_error.emit(str(e))
 
 
 class MainWidget(QWidget):
@@ -75,7 +78,7 @@ class MainWidget(QWidget):
         self.ui.setupUi(self)
         seo_urwid.data_for_request['search_engine'] = seo_urwid.YANDEX
         self.ui.notepad.setText('Чтобы проскроллить текущую страницу в поле XPATH введи "//body"\n')
-        self.page_scrolling_thread = StartThread()
+        self.page_scrolling_thread = ClickLinksThread()
         self.search_web_page_thread = SearchWebPage()
         self.scroll_current_page_thread = ScrollCurrentPageThread()
         self.proxy = proxy
@@ -94,15 +97,15 @@ class MainWidget(QWidget):
         self.ui.google_rbtn.clicked.connect(lambda: self.rbt_status_changed(seo_urwid.GOOGLE))
         self.ui.mailr_rbtn.clicked.connect(lambda: self.rbt_status_changed(seo_urwid.MAILRU))
         self.ui.scrollCurrentPageBtn.clicked.connect(self.scroll_current_page)
+
         BlinkerSignals.progress.connect(self.increase_progress_bar)
         BlinkerSignals.pages_counter.connect(self.increase_pages_counter)
         BlinkerSignals.num_links.connect(self.set_max_pages_counter)
         BlinkerSignals.max_scrolling.connect(self.set_max_scrolling)
-        self.page_scrolling_thread.send_error.connect(self.print_error)
-        self.search_web_page_thread.thread_error.connect(self.print_error)
-        self.scroll_current_page_thread.send_error.connect(self.print_error)
-        self.scroll_current_page_thread.done.connect(self.done_msg_dlg)
-        self.search_web_page_thread.done.connect(self.page_link_found)
+
+        Signals.done.connect(self.done_msg_dlg)
+        Signals.send_error.connect(self.print_error)
+        self.search_web_page_thread.page_found.connect(self.page_link_found)
 
     @pyqtSlot(str)
     def print_error(self, err):
