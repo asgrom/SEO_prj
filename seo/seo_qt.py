@@ -84,7 +84,6 @@ class MainWidget(QWidget):
         self.proxy = proxy
         self.user_dir = user_dir
         self.incognito = incognito
-        self.ui.xpaath_le.setText('//body')
         self.connect_signals()
 
     def connect_signals(self):
