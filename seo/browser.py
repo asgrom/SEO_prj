@@ -10,8 +10,6 @@ from seo import BlinkerSignals
 from seo import Chrome_dir
 from . import GOOGLE, YANDEX, Signals, MAILRU
 
-signals = Signals()
-
 
 class ErrorExcept(Exception):
     pass
@@ -20,7 +18,7 @@ class ErrorExcept(Exception):
 class Options(ChromeOptions):
     opt = [
         'disable-infobars',
-        'anable-extentions'
+        'enable-extentions'
         # 'disable-extensions'
     ]
 
@@ -84,10 +82,12 @@ class Browser(Chrome):
             html.send_keys(Keys.DOWN)
             Signals.scroll.send('scroll', done=int(height / 40))
             sleep(t)
-        signals.end.send(self)
+        Signals.end.send(self)
 
     def page_scrolling(self, timer):
-        """Прокрутка страницы"""
+        """Прокрутка страницы
+
+        Метод для консольной версии"""
 
         height = self.execute_script('return document.body.scrollHeight;')
         html = self.find_element_by_tag_name('html')

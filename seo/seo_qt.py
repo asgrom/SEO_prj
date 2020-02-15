@@ -1,3 +1,4 @@
+import re
 import subprocess
 import sys
 
@@ -6,7 +7,7 @@ from PyQt5.QtWidgets import *
 
 from . import BlinkerSignals
 from . import VISITED_LINKS_FILE
-from . import seo_urwid
+from . import core
 from .mainwidget import Ui_Form
 
 
@@ -27,7 +28,7 @@ class ScrollCurrentPageThread(QThread):
 
     def run(self) -> None:
         try:
-            seo_urwid.scroll_current_page(self.timer)
+            core.scroll_current_page(self.timer)
             Signals.done.emit()
         except Exception as e:
             Signals.send_error.emit(str(e))
@@ -42,11 +43,11 @@ class ClickLinksThread(QThread):
 
     def run(self):
         try:
-            seo_urwid.start_links_click_qt()
+            core.start_links_click_qt()
         except Exception as e:
             Signals.send_error.emit(str(e))
         finally:
-            seo_urwid.write_visited_links(mode='a')
+            core.write_visited_links(mode='a')
         Signals.done.emit()
 
 
@@ -64,7 +65,7 @@ class SearchWebPage(QThread):
     @pyqtSlot()
     def find_website_link(self):
         try:
-            seo_urwid.find_website_link()
+            core.find_website_link()
             self.page_found.emit()
         except Exception as e:
             Signals.send_error.emit(str(e))
@@ -76,7 +77,7 @@ class MainWidget(QWidget):
         super(MainWidget, self).__init__(parent=parent)
         self.ui = Ui_Form()
         self.ui.setupUi(self)
-        seo_urwid.data_for_request['search_engine'] = seo_urwid.YANDEX
+        core.data_for_request['search_engine'] = core.YANDEX
         self.ui.notepad.setText('Чтобы проскроллить текущую страницу в поле XPATH введи "//body"\n')
         self.page_scrolling_thread = ClickLinksThread()
         self.search_web_page_thread = SearchWebPage()
@@ -92,9 +93,9 @@ class MainWidget(QWidget):
         self.ui.close_chrome_btn.clicked.connect(self.close_chrome)
         self.ui.search_site_btn.clicked.connect(self.search_site_btn_clicked)
         self.ui.search_elems_btn.clicked.connect(self.search_links_on_active_page)
-        self.ui.yandex_rbtn.clicked.connect(lambda: self.rbt_status_changed(seo_urwid.YANDEX))
-        self.ui.google_rbtn.clicked.connect(lambda: self.rbt_status_changed(seo_urwid.GOOGLE))
-        self.ui.mailr_rbtn.clicked.connect(lambda: self.rbt_status_changed(seo_urwid.MAILRU))
+        self.ui.yandex_rbtn.clicked.connect(lambda: self.rbt_status_changed(core.YANDEX))
+        self.ui.google_rbtn.clicked.connect(lambda: self.rbt_status_changed(core.GOOGLE))
+        self.ui.mailr_rbtn.clicked.connect(lambda: self.rbt_status_changed(core.MAILRU))
         self.ui.scrollCurrentPageBtn.clicked.connect(self.scroll_current_page)
 
         BlinkerSignals.progress.connect(self.increase_progress_bar)
@@ -129,7 +130,7 @@ class MainWidget(QWidget):
     @pyqtSlot()
     def rbt_status_changed(self, search_engine: str):
         """Установка поисковой системы"""
-        seo_urwid.data_for_request['search_engine'] = search_engine
+        core.data_for_request['search_engine'] = search_engine
 
     @pyqtSlot()
     def search_links_on_active_page(self):
@@ -138,10 +139,10 @@ class MainWidget(QWidget):
         Устанавливает последнюю открытую вкладку браузера активной
         и начинает поиск необходимых элементов"""
         self.ui.log_text_browser.clear()
-        seo_urwid.data_for_request['timer'] = self.ui.timer_sb.value()
-        seo_urwid.selectors_for_links['num_links_to_click'] = self.ui.number_elems_sb.value()
-        seo_urwid.selectors_for_links['css_elems'] = self.ui.css_le.text()
-        seo_urwid.selectors_for_links['xpath_elems'] = self.ui.xpaath_le.text()
+        core.data_for_request['timer'] = self.ui.timer_sb.value()
+        core.selectors_for_links['num_links_to_click'] = self.ui.number_elems_sb.value()
+        core.selectors_for_links['css_elems'] = self.ui.css_le.text()
+        core.selectors_for_links['xpath_elems'] = self.ui.xpaath_le.text()
         self.page_scrolling_thread.start()
 
     @pyqtSlot()
@@ -159,7 +160,7 @@ class MainWidget(QWidget):
                                 buttons=QMessageBox.Ok,
                                 defaultButton=QMessageBox.Ok)
         try:
-            seo_urwid.continue_browsing()
+            core.continue_browsing()
         except Exception as e:
             self.ui.log_text_browser.setText(str(e))
 
@@ -167,11 +168,14 @@ class MainWidget(QWidget):
     def search_site_btn_clicked(self):
         """Нажата кнопка поиска сайта в поисковаой системе"""
         self.ui.log_text_browser.clear()
-        seo_urwid.data_for_request['geo_location'] = self.ui.geolocation_le.text().strip()
-        seo_urwid.data_for_request['phrase'] = self.ui.phrase_le.text().strip()
-        seo_urwid.data_for_request['website_url'] = self.ui.url_site_le.text().strip()
+        core.data_for_request['geo_location'] = self.ui.geolocation_le.text().strip()
+        url = self.ui.url_site_le.text().strip()
+        url = re.sub(r'(\*)+|(\.){2,}', '.*', url)
+        self.ui.url_site_le.setText(url)
+        core.data_for_request['phrase'] = self.ui.phrase_le.text().strip()
+        core.data_for_request['website_url'] = url
         try:
-            seo_urwid.browser_init(self.proxy, self.user_dir, self.incognito)
+            core.browser_init(self.proxy, self.user_dir, self.incognito)
         except Exception as e:
             self.print_error(e)
             return
@@ -183,14 +187,14 @@ class MainWidget(QWidget):
         """Закрытие веб-движка
 
         Также очищает историю браузера"""
-        seo_urwid.close_chrome()
+        core.close_chrome()
 
     def view_saved_links(self, file=None):
         subprocess.Popen(['gvim', file])
 
     def closeEvent(self, event):
         """Перед закрытием будет очищать историю браузера и удалять объект браузера"""
-        seo_urwid.close_chrome()
+        core.close_chrome()
         super(MainWidget, self).closeEvent(event)
 
     @pyqtSlot()
