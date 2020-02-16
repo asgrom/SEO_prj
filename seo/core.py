@@ -149,7 +149,7 @@ def start_links_click():
             actChains.click(links[i]).perform()
 
             BlinkerSignals.pages_counter.send(i + 1)
-            Driver.qt_page_scrolling(timer=timer)
+            Driver.page_scrolling(timer=timer)
             VisitedLinks.append(Driver.current_url)
             Driver.back()
             time.sleep(2)
