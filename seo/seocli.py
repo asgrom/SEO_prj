@@ -14,9 +14,12 @@ from seo import core, seo_console, seo_qt
 @click.option('--proxy', '-p', help='Прокси сервер')
 @click.help_option('-h', '--help', help='Показать эту справку')
 def cli(urwid, console, qt, user_dir, proxy, incognito):
-    """Запускает seo-sprint
+    """
+        Запускает seo-sprint
 
-    По-умолчанию запускается с urwid-меню"""
+        По-умолчанию запускается с urwid-меню
+    """
+    # print(f'qt = {qt}, console = {console}, urwid = {urwid}')
 
     if qt:
         seo_qt.main(proxy=proxy, user_dir=user_dir, incognito=incognito)

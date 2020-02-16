@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 from seo import BlinkerSignals
 from seo import Chrome_dir
-from . import GOOGLE, YANDEX, Signals, MAILRU
+from . import GOOGLE, YANDEX, MAILRU
 
 
 class ErrorExcept(Exception):
@@ -58,6 +58,18 @@ class Browser(Chrome):
         self.implicitly_wait(5)
         self.get(self.search_engine)
 
+    def get_document_height(self):
+        """
+            Получить высоту документа
+        """
+        height = self.execute_script(
+            'return Math.max('
+            'document.body.scrollHeight, document.documentElement.scrollHeight, '
+            'document.body.offsetHeight, document.documentElement.offsetHeight, '
+            'document.body.clientHeight, document.documentElement.clientHeight);'
+        )
+        return height
+
     def find_website_link(self):
         """Поиск ссылки на искомый сайт на странице выдачи поиска"""
 
@@ -71,43 +83,31 @@ class Browser(Chrome):
         self.switch_to.window(self.window_handles[-1])
         return self.find_link_in_search_result()
 
-    def page_scrolling_with_urwid_progress_bar(self, timer):
-        """Прокрутка страницы"""
-
-        height = self.execute_script('return document.body.scrollHeight;')
-        html = self.find_element_by_tag_name('html')
-        t = 40 * timer / height
-        # t = 1 / (height / 40 / timer)
-        for i in range(int(height / 40)):
-            html.send_keys(Keys.DOWN)
-            Signals.scroll.send('scroll', done=int(height / 40))
-            sleep(t)
-        Signals.end.send(self)
-
-    def page_scrolling(self, timer):
+    def console_page_scrolling(self, timer):
         """Прокрутка страницы
 
         Метод для консольной версии"""
 
-        height = self.execute_script('return document.body.scrollHeight;')
+        height = self.get_document_height()
         html = self.find_element_by_tag_name('html')
+        html.send_keys(Keys.HOME)
         t = 1 / (height / 60 / timer)
         for i in tqdm(range(int(height / 60)), desc='Прокрутка страницы', unit='click'):
             html.send_keys(Keys.DOWN)
             sleep(t)
 
-    def qt_page_scrolling(self, timer):
+    def page_scrolling(self, timer):
         """Прокрутка страницы для Qt"""
-        height = self.execute_script('return document.body.scrollHeight;')
-        html = self.find_element_by_tag_name('html')
-        html.send_keys(Keys.HOME)
+        height = self.get_document_height()
+        elem = self.find_element_by_tag_name('html')
+        elem.send_keys(Keys.HOME)
         t = 1 / (height / 40 / timer)
-        BlinkerSignals.max_scrolling.send(value=int(height / 40))
-        for i in range(int(height / 40)):
-            html.send_keys(Keys.DOWN)
+        BlinkerSignals.max_scrolling.send(height // 40)
+        for i in range(height // 40):
+            elem.send_keys(Keys.DOWN)
             sleep(t)
-            BlinkerSignals.progress.send(value=i + 1)
-        BlinkerSignals.progress.send(value=0)
+            BlinkerSignals.progress.send(i + 1)
+        BlinkerSignals.progress.send(0)
 
     def get_links_from_website(self, css_elems=None, xpath_elems=None):
         """Поиск элементов для кликов на странице сайта

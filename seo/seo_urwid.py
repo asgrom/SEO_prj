@@ -30,7 +30,7 @@
 from urwid import *
 from urwid_timed_progress import TimedProgressBar
 
-from seo import Signals
+from seo import BlinkerSignals
 from seo import core
 
 __version__ = '0.3'
@@ -51,7 +51,9 @@ palette = [
     ('bg', 'black', 'dark cyan')
 ]
 
-signals = Signals()
+Proxy = None
+UserDir = None
+Incognito = None
 
 
 class MyPile(Pile):
@@ -154,19 +156,22 @@ def clear_msg_widget():
 
 
 def start_browsing():
-    """Запускает браузер
+    """
+        Запускает браузер
 
-    Запускается браузер. Происходит поиск ссылки на сайт в поисковике. Если ссылка найдена, появляется сообщение об этом"""
+        Запускается браузер. Происходит поиск ссылки на сайт в поисковике.
+        Если ссылка найдена, появляется сообщение об этом.
+    """
     clear_msg_widget()
     try:
-        core.browser_init()
+        core.browser_init(proxy=Proxy, user_dir=UserDir, incognito=Incognito)
         core.find_website_link()
-        popup_message('Ссылка на сайт найдена\nНажми кнопку для перехода на сайт', callback=continue_browsing)
+        popup_message('Ссылка на сайт найдена\nНажми кнопку для перехода на сайт', callback=goto_found_link)
     except Exception as e:
         print_msg(e)
 
 
-def browsing_active_page():
+def start_links_click():
     """Поиск элементов на активной вкладке браузера"""
     clear_msg_widget()
     try:
@@ -177,13 +182,13 @@ def browsing_active_page():
         core.write_visited_links(mode='a')
 
 
-def continue_browsing():
+def goto_found_link():
     """Переход на найденный сайт
 
     Функция запускается после нажатия на кнопку в сообщении о том, что ссылка на сайт найдена.
     """
     try:
-        core.continue_browsing()
+        core.goto_found_link()
     except Exception as e:
         print_msg(e)
     finally:
@@ -216,30 +221,56 @@ def attr_wrap(obj):
 
 
 # обновление прогресс-бара прокрутки страницы
-@signals.scroll.connect
-def update_page_scroll_bar(sender, done):
-    page_scroll_bar.add_progress(1, done=done)
+@BlinkerSignals.progress.connect
+def update_page_scroll_bar(value):
+    """
+        Обновление прогресс-бара прокрутки страницы
+    :param value:
+    :return:
+    """
+    if value == 0:
+        page_scroll_bar.reset()
+    else:
+        page_scroll_bar.add_progress(1)
     loop.draw_screen()
 
 
-# сброс прогресс-бара прокрутки страницы
-@signals.end.connect
-def reset_page_scroll_bar(sender):
-    page_scroll_bar.reset()
+# установка максимума в прогрессбаре скроллинка страницы
+@BlinkerSignals.max_scrolling.connect
+def set_max_scrolling_value(value):
+    """
+        Установка максимума в прогрессбаре скроллинка страницы
+    :param value:
+    :return:
+    """
+    page_scroll_bar.done = value
+    loop.draw_screen()
+
+
+# установка максимума прогрессбара количества страниц
+@BlinkerSignals.num_links.connect
+def set_max_pages(value):
+    """
+        Установка максимума прогрессбара количества страниц
+    :param value:
+    :return:
+    """
+    page_amount_bar.done = value
     loop.draw_screen()
 
 
 # обновление прогресс-бара количества страницы
-@signals.clicked.connect
-def update_page_amount_bar(sender, done):
-    page_amount_bar.add_progress(1, done=done)
-    loop.draw_screen()
-
-
-# сброс прогресс-бара количества страниц
-@signals.end.connect_via('loop-end')
-def reset_page_amount_bar(sender):
-    page_amount_bar.reset()
+@BlinkerSignals.pages_counter.connect
+def update_page_amount_bar(value):
+    """
+        Обновление прогресс-бара количества страницы
+    :param value:
+    :return:
+    """
+    if value == 0:
+        page_amount_bar.reset()
+    else:
+        page_amount_bar.add_progress(1)
     loop.draw_screen()
 
 
@@ -269,7 +300,7 @@ links_num = AttrMap(IntEdit('Количество ссылок: '), '', 'focused
 
 # список кнопок
 buttons = [
-    button('ПРОСМОТР АДРЕСОВ ПОСЕЩЕННЫХ СТРАНИЦ', lambda x: core.print_visited_links()),
+    button('ПРОСМОТР АДРЕСОВ ПОСЕЩЕННЫХ СТРАНИЦ', lambda x: core.view_visited_links()),
     button('поиск заданного сайта', lambda x: start_browsing()),
     button('ВЫХОД', exit_program)
 ]
@@ -346,7 +377,7 @@ progress_bar_wgt = LineBox(
 selectors_wgt = LineBox(
     Padding(
         MyPile([css_path, xpath, links_num, timer,
-                button('ПРОСМОТР ССЫЛОК НА АКТИВНОЙ СТРАНИЦЕ', lambda x: browsing_active_page())]),
+                button('ПРОСМОТР ССЫЛОК НА АКТИВНОЙ СТРАНИЦЕ', lambda x: start_links_click())]),
         left=1, right=1),
     title='Выбор элементов на активной странице')
 
@@ -378,9 +409,13 @@ main_wgt = WidgetPlaceholder(base_wgt)
 loop = MainLoop(main_wgt, palette=palette, unhandled_input=exit_program, handle_mouse=False)
 
 
-def main():
+def main(proxy, user_dir, incognito):
+    global Proxy, UserDir, Incognito
+    Proxy = proxy
+    UserDir = user_dir
+    Incognito = incognito
     loop.run()
 
 
 if __name__ == '__main__':
-    main()
+    pass

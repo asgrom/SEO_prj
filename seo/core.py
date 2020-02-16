@@ -11,37 +11,34 @@ from seo import YANDEX, GOOGLE, MAILRU
 from seo.google_search import Google
 from seo.mailru_search import MailRu
 from seo.yandex_search import Yandex
-from . import Signals, BlinkerSignals
-from . import seo_urwid
+from . import BlinkerSignals
 from .browser import ErrorExcept, Options
 
 VisitedLinks = list()
 
 Driver = None
 
-RequiredWebElement = None
-
-signals = Signals()
+WebsiteLink = None
 
 data_for_request = dict(
     search_engine=None,
     phrase=None,
     website_url=None,
-    timer=None,
+    timer=0,
     geo_location=None
 )
 
 selectors_for_links = dict(
     css_elems=None,
     xpath_elems=None,
-    num_links_to_click=None
+    num_links_to_click=0
 )
 
 
 def close_chrome():
     try:
         os.remove(Chrome_history)
-    except Exception:
+    except OSError:
         pass
     if Driver is not None:
         Driver.quit()
@@ -50,41 +47,36 @@ def close_chrome():
 def find_website_link():
     """Поиск ссылки на сайт в поисковике"""
 
-    global RequiredWebElement
+    global WebsiteLink
 
     # устанавливаем местоположение если поисковик яндекс и если задан город местоположения
     if Driver.geo_location and Driver.search_engine == YANDEX:
         Driver.change_browser_location()
 
     # ссылка на искомый веб-сайт
-    link = Driver.find_website_link()
+    WebsiteLink = Driver.find_website_link()
 
-    if not link:
-        raise ErrorExcept('ССЫЛКИ НА ИСКОМЫЙ САЙТ НЕ НАЙДЕНО')
-
-    RequiredWebElement = link
     VisitedLinks.append(f'URL поисковика\n{Driver.current_url}')
     write_visited_links(mode='a')
 
-    return link
+    return WebsiteLink
 
 
-def continue_browsing():
+def goto_found_link():
     """Переход по найденной ссылке основного сайта
 
     Прокручивание страницы поиска наверх, переход к ссылке, клик. Переключение на открытую вкладку.
     """
-    # VisitedLinks.append(f'Ссылка с поисковика:\n{RequiredWebElement.get_attribute("href")}')
 
     try:
         # прокрутка страницы на начало
-        # Driver.execute_script('scrollTo(0,0);')
-        RequiredWebElement.send_keys(Keys.HOME)
+        WebsiteLink.send_keys(Keys.HOME)
         time.sleep(.5)
+
         # перейти к искомому элементу
         actChains = ActionChains(Driver)
-        actChains.move_to_element(RequiredWebElement).perform()
-        actChains.click(RequiredWebElement).perform()
+        actChains.move_to_element(WebsiteLink).perform()
+        actChains.click(WebsiteLink).perform()
 
         # сделать новую вкладку активной
         Driver.switch_to.window(Driver.window_handles[-1])
@@ -122,58 +114,18 @@ def browser_init(proxy, user_dir, incognito):
         raise ErrorExcept(f'ОШИБКА В ИНИЦИАЛИЗАЦИИ ДРАЙВЕРА\n{e}')
 
 
-def start_links_click():
-    """Начинаем поиск и просмотр ссылок на странице
-
-    Активируем последнюю вкладку.
-    Посещенные линки добавляем в глобальный список.
-    """
-    global Driver
-    if Driver is None:
-        Driver = Google(options=Options())
-
-    num_links = selectors_for_links['num_links_to_click']
-
-    timer = data_for_request['timer']
-
-    Driver.switch_to.window(Driver.window_handles[-1])
-
-    VisitedLinks.append(Driver.current_url)
-
-    if num_links > len(Driver.get_links_from_website(
-            css_elems=selectors_for_links['css_elems'],
-            xpath_elems=selectors_for_links['xpath_elems'])):
-        raise ErrorExcept(f'КОЛИЧЕСТВО НАЙДЕННЫХ ЭЛЕМЕНТОВ НА СТРАНИЦЕ МЕНЬШЕ ТРЕБУЕМОГО')
-
-    try:
-        for i in range(num_links):
-            links = Driver.get_links_from_website(css_elems=selectors_for_links['css_elems'],
-                                                  xpath_elems=selectors_for_links['xpath_elems'])
-            links[i].click()
-
-            Driver.page_scrolling_with_urwid_progress_bar(timer=timer)
-            Signals.clicked.send(start_links_click, done=num_links)
-
-            VisitedLinks.append(Driver.current_url)
-            Driver.back()
-    except WebDriverException as e:
-        raise ErrorExcept(f'ОШИБКА!!! ПРИ ПЕРЕХОДЕ ПО ЭЛЕМЕНТАМ НА СТРАНИЦЕ\n{e}')
-    finally:
-        Signals.end.send('loop-end')
-
-
 def scroll_current_page(timer):
     """Прокрутка текущей страницы"""
     Driver.switch_to.window(Driver.window_handles[-1])
     VisitedLinks.append(Driver.current_url)
-    Driver.qt_page_scrolling(timer=timer)
+    Driver.page_scrolling(timer=timer)
     write_visited_links(mode='a')
 
 
-def start_links_click_qt():
-    """Клики по ссылкам
-
-    Метод для Qt версии"""
+def start_links_click():
+    """
+        Клики по ссылкам
+    """
 
     num_links = selectors_for_links['num_links_to_click']
 
@@ -186,7 +138,7 @@ def start_links_click_qt():
             css_elems=selectors_for_links['css_elems'],
             xpath_elems=selectors_for_links['xpath_elems'])):
         raise ErrorExcept(f'КОЛИЧЕСТВО НАЙДЕННЫХ ЭЛЕМЕНТОВ НА СТРАНИЦЕ МЕНЬШЕ ТРЕБУЕМОГО')
-    BlinkerSignals.num_links.send(value=num_links)
+    BlinkerSignals.num_links.send(num_links)
 
     try:
         for i in range(num_links):
@@ -195,20 +147,24 @@ def start_links_click_qt():
             actChains = ActionChains(Driver)
             actChains.move_to_element(links[i]).perform()
             actChains.click(links[i]).perform()
-            # links[i].click()
 
-            BlinkerSignals.pages_counter.send(value=i + 1)
+            BlinkerSignals.pages_counter.send(i + 1)
             Driver.qt_page_scrolling(timer=timer)
             VisitedLinks.append(Driver.current_url)
             Driver.back()
             time.sleep(2)
-        BlinkerSignals.pages_counter.send(value=0)
+        BlinkerSignals.pages_counter.send(0)
     except WebDriverException as e:
         raise ErrorExcept(f'ОШИБКА!!! ПРИ ПЕРЕХОДЕ ПО ЭЛЕМЕНТАМ НА СТРАНИЦЕ\n{e}')
+    finally:
+        if VisitedLinks:
+            write_visited_links(mode='a')
 
 
-def print_visited_links():
-    """Запускается gvim c файлом посещенных ссылок"""
+def view_visited_links():
+    """
+        Запускается gvim c файлом посещенных ссылок
+    """
     try:
         Popen(['gvim', VISITED_LINKS_FILE])
     except OSError as e:
@@ -216,9 +172,10 @@ def print_visited_links():
 
 
 def write_visited_links(mode='w'):
-    """Добавляет запись или перезаписывает файла посещенных ссылок
+    """
+        Добавляет запись или перезаписывает файла посещенных ссылок
 
-    Режим открытия файла зависит от аргумента mode: w - запись, a - добавление в конец файла.
+        Режим открытия файла зависит от аргумента mode: w - запись, a - добавление в конец файла.
     """
     if not VisitedLinks:
         return
@@ -235,7 +192,7 @@ def write_visited_links(mode='w'):
 
 
 def main():
-    seo_urwid.main()
+    pass
 
 
 if __name__ == '__main__':

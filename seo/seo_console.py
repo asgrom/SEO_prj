@@ -147,7 +147,7 @@ def start_links_click(driver, selectors_for_links):
             links = driver.get_links_from_website(css_elems=selectors_for_links['css_elems'],
                                                   xpath_elems=selectors_for_links['xpath_elems'])
             links[i].click()
-            driver.page_scrolling(timer=timer)
+            driver.console_page_scrolling(timer=timer)
             visited_links.append(driver.current_url)
             driver.back()
     except WebDriverException as e:
