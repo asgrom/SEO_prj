@@ -9,6 +9,19 @@ from . import core
 from .mainwidget import Ui_Form
 
 
+def log_uncaught_exceptions(ex_cls, ex, tb):
+    text = '{}: {}:\n'.format(ex_cls.__name__, ex)
+    import traceback
+    text += ''.join(traceback.format_tb(tb))
+
+    print('Error: ', text)
+    QMessageBox.critical(None, 'Error', text)
+    # quit()
+
+
+sys.excepthook = log_uncaught_exceptions
+
+
 class QtSignals(QObject):
     done = pyqtSignal()
     send_error = pyqtSignal(str)
@@ -93,7 +106,32 @@ class MainWidget(QWidget):
         self.proxy = proxy
         self.user_dir = user_dir
         self.incognito = incognito
+        self.set_css()
         self.connect_signals()
+
+    def set_css(self):
+        self.setStyleSheet(
+            """
+            QProgressBar::chunk {
+                background-color: #CD96CD;
+                width: 10px;
+                margin: 0.5px;
+            }
+            
+            QProgressBar {
+                text-align: center;
+                border-radius: 5px;
+                border: 1px solid grey;
+                padding: 0.5px;
+            }
+            
+            QLineEdit {
+                border: 1px solid grey;
+                border-radius: 5px;
+                padding: 2px;
+            }
+            """
+        )
 
     def connect_signals(self):
         """
@@ -258,6 +296,8 @@ class MainWidget(QWidget):
 
 def main(proxy, user_dir, incognito):
     app = QApplication(sys.argv)
+    with open('/home/alexandr/PycharmProjects/SEO_prj/qss/stylesheet.qss') as f:
+        app.setStyleSheet(f.read())
     win = MainWidget(proxy=proxy, user_dir=user_dir, incognito=incognito)
     win.show()
     sys.exit(app.exec())

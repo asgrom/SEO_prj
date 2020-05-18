@@ -56,6 +56,9 @@ def find_website_link():
     # ссылка на искомый веб-сайт
     WebsiteLink = Driver.find_website_link()
 
+    actChains = ActionChains(Driver)
+    actChains.move_to_element(WebsiteLink).perform()
+
     VisitedLinks.append(f'URL поисковика\n{Driver.current_url}')
     write_visited_links(mode='a')
 

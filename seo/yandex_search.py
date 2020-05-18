@@ -1,5 +1,7 @@
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.action_chains import ActionChains
 
+import time
 from .browser import Browser
 
 
@@ -22,16 +24,28 @@ class Yandex(Browser):
         """
         Если в чекбоксе 'Автоматическое местоположение' невозможно сменить город.
         """
-        self.get(self.search_engine)
-        geo_link = self.find_element_by_xpath('//a[contains(@class, "geolink")]')
-        geo_link.click()
+        # self.get(self.search_engine)
+        geo = self.find_element_by_xpath("//div[contains(@class,'dropdown2')]//a[@role='button']")
+        actChains = ActionChains(self)
+        actChains.move_to_element(geo)
+        actChains.click(geo)
+        actChains.perform()
+        time.sleep(1)
+        button = self.find_element_by_xpath("//a[span[text()='Изменить город']]")
+        # button.click()
+        actChains = ActionChains(self)
+        actChains.move_to_element(button)
+        actChains.click(button)
+        actChains.perform()
+
+        # geo_link = self.find_element_by_xpath('//a[contains(@class, "geolink")]')
+        # geo_link.click()
 
         # снятие выбора в чекбоксе автоматического определения местоположения
         chkbox = self.find_element_by_xpath('//input[@class="checkbox__control"]')
         if chkbox.is_selected():
             chkbox.click()
 
-        import time
         time.sleep(1)
 
         geo_input = self.find_element_by_xpath('//input[@name="name"]')

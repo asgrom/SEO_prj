@@ -11,7 +11,7 @@ from seo import core, seo_console, seo_qt
               help='не использовать --user-dir', is_flag=True, default=True)
 @click.option('--incognito', '-i', help='использовать режим инкогнито',
               is_flag=True, default=False)
-@click.option('--proxy', '-p', help='Прокси сервер')
+@click.option('--proxy', '-p', help='Прокси сервер в формате IP:Port')
 @click.help_option('-h', '--help', help='Показать эту справку')
 def cli(urwid, console, qt, user_dir, proxy, incognito):
     """
